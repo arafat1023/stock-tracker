@@ -119,6 +119,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "deliveries_fab",
         onPressed: () => _navigateToCreateDelivery(context),
         child: const Icon(Icons.add),
       ),

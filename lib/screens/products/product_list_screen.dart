@@ -90,6 +90,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "products_fab",
         onPressed: () => _navigateToAddProduct(context),
         child: const Icon(Icons.add),
       ),

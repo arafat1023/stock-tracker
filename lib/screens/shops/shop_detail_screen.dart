@@ -52,6 +52,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "shop_detail_fab",
         onPressed: () => _createDelivery(context),
         label: const Text('Create Delivery'),
         icon: const Icon(Icons.local_shipping),

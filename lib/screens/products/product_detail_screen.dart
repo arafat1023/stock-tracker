@@ -52,6 +52,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "product_detail_fab",
         onPressed: () => _navigateToStockTransaction(context),
         label: const Text('Stock Transaction'),
         icon: const Icon(Icons.add),

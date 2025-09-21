@@ -39,7 +39,7 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [

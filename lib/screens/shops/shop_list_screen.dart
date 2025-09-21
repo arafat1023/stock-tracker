@@ -91,6 +91,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "shops_fab",
         onPressed: () => _navigateToAddShop(context),
         child: const Icon(Icons.add),
       ),
