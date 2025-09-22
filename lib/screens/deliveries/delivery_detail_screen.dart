@@ -31,14 +31,21 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   Future<void> _loadDeliveryItems() async {
     try {
       final items = await context.read<DeliveryProvider>().getDeliveryItems(widget.delivery.id!);
-      setState(() {
-        _deliveryItems = items;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _deliveryItems = items;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading items: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -49,49 +56,30 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         title: Text('Delivery #${widget.delivery.id}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          if (widget.delivery.status == DeliveryStatus.pending)
-            PopupMenuButton<String>(
-              onSelected: _handleAction,
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'complete',
-                  child: ListTile(
-                    leading: Icon(Icons.check_circle, color: Colors.green),
-                    title: Text('Mark Completed'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'cancel',
-                  child: ListTile(
-                    leading: Icon(Icons.cancel, color: Colors.red),
-                    title: Text('Cancel Delivery'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
           IconButton(
             onPressed: _generatePDF,
             icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Generate PDF',
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDeliveryInfoCard(),
-                  const SizedBox(height: 16),
-                  _buildShopInfoCard(),
-                  const SizedBox(height: 16),
-                  _buildItemsCard(),
-                  const SizedBox(height: 16),
-                  _buildSummaryCard(),
-                ],
+          : RefreshIndicator(
+              onRefresh: _loadDeliveryItems,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDeliveryInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildItemsCard(),
+                    const SizedBox(height: 16),
+                    if (widget.delivery.status == DeliveryStatus.pending)
+                      _buildActionsCard(),
+                  ],
+                ),
               ),
             ),
     );
@@ -99,118 +87,111 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   Widget _buildDeliveryInfoCard() {
     Color statusColor;
-    IconData statusIcon;
-
+    String statusText;
     switch (widget.delivery.status) {
       case DeliveryStatus.pending:
         statusColor = Colors.orange;
-        statusIcon = Icons.pending;
+        statusText = 'Pending';
         break;
       case DeliveryStatus.completed:
         statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
+        statusText = 'Completed';
         break;
       case DeliveryStatus.cancelled:
         statusColor = Colors.red;
-        statusIcon = Icons.cancel;
+        statusText = 'Cancelled';
         break;
     }
 
+    final shop = context.watch<ShopProvider>().getShopById(widget.delivery.shopId);
+
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Delivery Information',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(statusIcon, color: statusColor, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'Status: ${widget.delivery.status.name.toUpperCase()}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                    fontSize: 16,
+                Expanded(
+                  child: Text(
+                    'Delivery Details',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(25),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            _buildInfoRow('Delivery Date', DateFormat('MMM dd, yyyy').format(widget.delivery.deliveryDate)),
-            _buildInfoRow('Total Amount', '\$${widget.delivery.totalAmount.toStringAsFixed(2)}'),
+            const Divider(height: 24),
+            _buildInfoRow(Icons.store, 'Shop', shop?.name ?? 'N/A'),
+            _buildInfoRow(Icons.calendar_today, 'Date', DateFormat.yMMMd().format(widget.delivery.deliveryDate)),
+            _buildInfoRow(Icons.attach_money, 'Total Amount', '৳${widget.delivery.totalAmount.toStringAsFixed(2)}'),
             if (widget.delivery.notes.isNotEmpty)
-              _buildInfoRow('Notes', widget.delivery.notes),
+              _buildInfoRow(Icons.notes, 'Notes', widget.delivery.notes),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildShopInfoCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Shop Information',
-              style: Theme.of(context).textTheme.headlineSmall,
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.grey, size: 20),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 16)),
+              ],
             ),
-            const SizedBox(height: 16),
-            Consumer<ShopProvider>(
-              builder: (context, shopProvider, child) {
-                final shop = shopProvider.getShopById(widget.delivery.shopId);
-                if (shop == null) {
-                  return const Text('Shop not found');
-                }
-
-                return Column(
-                  children: [
-                    _buildInfoRow('Name', shop.name),
-                    _buildInfoRow('Address', shop.address),
-                    if (shop.contact.isNotEmpty)
-                      _buildInfoRow('Contact', shop.contact),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildItemsCard() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Items (${_deliveryItems.length})',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('Items (${_deliveryItems.length})', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             if (_deliveryItems.isEmpty)
-              const Center(
-                child: Text(
-                  'No items found',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              )
+              const Center(child: Text('No items in this delivery.', style: TextStyle(color: Colors.grey)))
             else
-              Column(
-                children: _deliveryItems.map((item) {
-                  return _buildItemTile(item);
-                }).toList(),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _deliveryItems.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  return _buildItemTile(_deliveryItems[index]);
+                },
               ),
           ],
         ),
@@ -219,296 +200,161 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   Widget _buildItemTile(DeliveryItem item) {
-    return Consumer<ProductProvider>(
-      builder: (context, productProvider, child) {
-        final product = productProvider.getProductById(item.productId);
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      product?.name ?? 'Unknown Product',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '\$${item.totalPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text('Quantity: ${item.quantity.toStringAsFixed(1)} ${product?.unit ?? ''}'),
-                  const Spacer(),
-                  Text('Unit Price: \$${item.unitPrice.toStringAsFixed(2)}'),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+    final product = context.watch<ProductProvider>().getProductById(item.productId);
+    return ListTile(
+      title: Text(product?.name ?? 'Unknown Product', style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text('${item.quantity.toStringAsFixed(1)} ${product?.unit ?? ''} x ৳${item.unitPrice.toStringAsFixed(2)}'),
+      trailing: Text('৳${item.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 
-  Widget _buildSummaryCard() {
-    final itemCount = _deliveryItems.length;
-    final totalQuantity = _deliveryItems.fold(0.0, (sum, item) => sum + item.quantity);
-
+  Widget _buildActionsCard() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Summary',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('Actions', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: _buildSummaryItem(
-                    'Total Items',
-                    itemCount.toString(),
-                    Icons.inventory,
-                    Colors.blue,
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.completed),
+                    icon: const Icon(Icons.check_circle, color: Colors.white),
+                    label: const Text('Mark as Completed'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildSummaryItem(
-                    'Total Quantity',
-                    totalQuantity.toStringAsFixed(1),
-                    Icons.straighten,
-                    Colors.purple,
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.cancelled),
+                    icon: const Icon(Icons.cancel, color: Colors.white),
+                    label: const Text('Cancel Delivery'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.attach_money,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '\$${widget.delivery.totalAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const Text(
-                    'Total Amount',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummaryItem(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleAction(String action) {
-    switch (action) {
-      case 'complete':
-        _updateDeliveryStatus(DeliveryStatus.completed);
-        break;
-      case 'cancel':
-        _updateDeliveryStatus(DeliveryStatus.cancelled);
-        break;
-    }
-  }
-
   void _updateDeliveryStatus(DeliveryStatus status) async {
-    try {
-      await context.read<DeliveryProvider>().updateDeliveryStatus(widget.delivery.id!, status);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delivery ${status.name} successfully')),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Action'),
+        content: Text('Are you sure you want to ${status == DeliveryStatus.completed ? 'complete' : 'cancel'} this delivery?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: status == DeliveryStatus.completed ? Colors.green : Colors.red), child: const Text('Yes')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final navigator = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      final deliveryProvider = context.read<DeliveryProvider>();
+
+      try {
+        await deliveryProvider.updateDeliveryStatus(widget.delivery.id!, status);
+        if (!mounted) return;
+
+        messenger.showSnackBar(
+          SnackBar(content: Text('Delivery has been ${status.name}.'), backgroundColor: Colors.green),
         );
-        Navigator.pop(context); // Return to delivery list
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating delivery: $e')),
+        navigator.pop(true); // Return true to indicate success
+      } catch (e) {
+        if (!mounted) return;
+
+        messenger.showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   void _generatePDF() async {
-    showDialog(
+    final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Generate PDF'),
-        content: const Text('Choose an action for the delivery note:'),
+        title: const Text('PDF Options'),
+        content: const Text('How would you like to handle the PDF?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, 'cancel'),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _createAndPrintPDF(false);
-            },
-            child: const Text('Print'),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, 'download'),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _createAndPrintPDF(true);
-            },
-            child: const Text('Share'),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context, 'share'),
+            icon: const Icon(Icons.share),
+            label: const Text('Share'),
           ),
         ],
       ),
     );
-  }
 
-  void _createAndPrintPDF(bool share) async {
+    if (action == null || action == 'cancel') return;
+
     try {
-      final shopProvider = context.read<ShopProvider>();
-      final productProvider = context.read<ProductProvider>();
+      final shop = context.read<ShopProvider>().getShopById(widget.delivery.shopId);
+      if (shop == null) throw Exception('Shop not found');
 
-      final shop = shopProvider.getShopById(widget.delivery.shopId);
-      if (shop == null) {
-        throw Exception('Shop not found');
-      }
-
-      final products = <Product>[];
-      for (final item in _deliveryItems) {
-        final product = productProvider.getProductById(item.productId);
-        if (product != null) {
-          products.add(product);
-        }
-      }
+      final products = _deliveryItems.map((item) {
+        return context.read<ProductProvider>().getProductById(item.productId) ?? Product.fromMap({
+          'id': 0,
+          'name': 'Unknown',
+          'unit': '',
+          'price': 0.0,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }).toList();
 
       final pdfService = PDFService();
-      await pdfService.generateDeliveryNote(
+      final filePath = await pdfService.generateDeliveryNote(
         delivery: widget.delivery,
         shop: shop,
         items: _deliveryItems,
         products: products,
-        share: share,
+        share: action == 'share',
+        download: action == 'download',
       );
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (action == 'download' && filePath != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(share ? 'PDF shared successfully' : 'PDF generated successfully'),
+            content: Text('PDF downloaded to: $filePath'),
+            duration: const Duration(seconds: 4),
           ),
+        );
+      } else if (action == 'share') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF generated and ready to share.')),
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.red),
         );
-      }
     }
   }
 }

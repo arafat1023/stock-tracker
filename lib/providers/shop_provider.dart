@@ -93,4 +93,11 @@ class ShopProvider with ChangeNotifier {
       return null;
     }
   }
+
+  void clearData() {
+    _shops.clear();
+    _filteredShops.clear();
+    _searchQuery = '';
+    notifyListeners();
+  }
 }

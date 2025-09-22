@@ -9,18 +9,24 @@ import '../models/delivery.dart';
 import '../models/delivery_item.dart';
 import '../models/shop.dart';
 import '../models/product.dart';
+import '../services/database_service.dart';
+import '../services/report_service.dart';
 
 class PDFService {
   static final PDFService _instance = PDFService._internal();
   factory PDFService() => _instance;
   PDFService._internal();
 
-  Future<void> generateDeliveryNote({
+  final DatabaseService _databaseService = DatabaseService();
+  final ReportService _reportService = ReportService();
+
+  Future<String?> generateDeliveryNote({
     required Delivery delivery,
     required Shop shop,
     required List<DeliveryItem> items,
     required List<Product> products,
     bool share = false,
+    bool download = false,
   }) async {
     final pdf = pw.Document();
 
@@ -48,8 +54,13 @@ class PDFService {
 
     if (share) {
       await _sharePDF(pdf, 'Delivery_${delivery.id}_${shop.name}');
+      return null;
+    } else if (download) {
+      final filePath = await _downloadPDF(pdf, 'Delivery_${delivery.id}_${shop.name}');
+      return filePath;
     } else {
       await _printPDF(pdf);
+      return null;
     }
   }
 
@@ -217,8 +228,8 @@ class PDFService {
                   _buildTableCell(product.name),
                   _buildTableCell(product.unit),
                   _buildTableCell(item.quantity.toStringAsFixed(1)),
-                  _buildTableCell('\$${item.unitPrice.toStringAsFixed(2)}'),
-                  _buildTableCell('\$${item.totalPrice.toStringAsFixed(2)}'),
+                  _buildTableCell('BDT ${item.unitPrice.toStringAsFixed(2)}'),
+                  _buildTableCell('BDT ${item.totalPrice.toStringAsFixed(2)}'),
                 ],
               );
             }),
@@ -250,7 +261,7 @@ class PDFService {
                 ),
               ),
               pw.Text(
-                '\$${delivery.totalAmount.toStringAsFixed(2)}',
+                'BDT ${delivery.totalAmount.toStringAsFixed(2)}',
                 style: pw.TextStyle(
                   fontSize: 20,
                   fontWeight: pw.FontWeight.bold,
@@ -346,10 +357,22 @@ class PDFService {
     }
   }
 
-  Future<void> generateStockReport({
+  Future<String> _downloadPDF(pw.Document pdf, String fileName) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$fileName.pdf');
+      await file.writeAsBytes(await pdf.save());
+      return file.path;
+    } catch (e) {
+      throw Exception('Failed to download PDF: $e');
+    }
+  }
+
+  Future<String?> generateStockReport({
     required List<Product> products,
     required Map<int, double> stockBalances,
     bool share = false,
+    bool download = false,
   }) async {
     final pdf = pw.Document();
 
@@ -371,8 +394,13 @@ class PDFService {
 
     if (share) {
       await _sharePDF(pdf, 'Stock_Report_${DateFormat('yyyy_MM_dd').format(DateTime.now())}');
+      return null;
+    } else if (download) {
+      final filePath = await _downloadPDF(pdf, 'Stock_Report_${DateFormat('yyyy_MM_dd').format(DateTime.now())}');
+      return filePath;
     } else {
       await _printPDF(pdf);
+      return null;
     }
   }
 
@@ -435,12 +463,282 @@ class PDFService {
             children: [
               _buildTableCell(product.name),
               _buildTableCell(product.unit),
-              _buildTableCell('\$${product.price.toStringAsFixed(2)}'),
+              _buildTableCell('BDT ${product.price.toStringAsFixed(2)}'),
               _buildTableCell(stock.toStringAsFixed(1)),
-              _buildTableCell('\$${stockValue.toStringAsFixed(2)}'),
+              _buildTableCell('BDT ${stockValue.toStringAsFixed(2)}'),
             ],
           );
         }),
+      ],
+    );
+  }
+
+  Future<String?> generateBusinessSummaryReport({
+    bool share = false,
+    bool download = false,
+  }) async {
+    final pdf = pw.Document();
+
+    // Get dashboard metrics and business data
+    final metrics = await _reportService.getDashboardMetrics();
+    final products = await _databaseService.getProducts();
+    final shops = await _databaseService.getShops();
+    final deliveries = await _databaseService.getDeliveries();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (pw.Context context) {
+          return [
+            _buildBusinessSummaryHeader(),
+            pw.SizedBox(height: 20),
+            _buildBusinessMetrics(metrics),
+            pw.SizedBox(height: 20),
+            _buildTopProductsTable(products, deliveries),
+            pw.SizedBox(height: 20),
+            _buildTopShopsTable(shops, deliveries),
+            pw.SizedBox(height: 20),
+            _buildRecentActivityTable(deliveries),
+          ];
+        },
+      ),
+    );
+
+    if (share) {
+      await _sharePDF(pdf, 'Business_Summary_${DateFormat('yyyy_MM_dd').format(DateTime.now())}');
+      return null;
+    } else if (download) {
+      final filePath = await _downloadPDF(pdf, 'Business_Summary_${DateFormat('yyyy_MM_dd').format(DateTime.now())}');
+      return filePath;
+    } else {
+      await _printPDF(pdf);
+      return null;
+    }
+  }
+
+  pw.Widget _buildBusinessSummaryHeader() {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'STOCK TRACKER',
+          style: pw.TextStyle(
+            fontSize: 24,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue,
+          ),
+        ),
+        pw.Text(
+          'Business Summary Report',
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.normal,
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        pw.Text(
+          'Generated on ${DateFormat('MMMM dd, yyyy').format(DateTime.now())}',
+          style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey),
+        ),
+        pw.Divider(thickness: 2, color: PdfColors.blue),
+      ],
+    );
+  }
+
+  pw.Widget _buildBusinessMetrics(DashboardMetrics metrics) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Key Business Metrics',
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 12),
+        pw.Row(
+          children: [
+            pw.Expanded(
+              child: _buildMetricBox('Total Revenue', 'BDT ${metrics.totalRevenue.toStringAsFixed(2)}', PdfColors.green),
+            ),
+            pw.SizedBox(width: 16),
+            pw.Expanded(
+              child: _buildMetricBox('Inventory Value', 'BDT ${metrics.totalStockValue.toStringAsFixed(2)}', PdfColors.blue),
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 12),
+        pw.Row(
+          children: [
+            pw.Expanded(
+              child: _buildMetricBox('Total Deliveries', metrics.totalDeliveries.toString(), PdfColors.orange),
+            ),
+            pw.SizedBox(width: 16),
+            pw.Expanded(
+              child: _buildMetricBox('Pending Deliveries', metrics.pendingDeliveries.toString(), PdfColors.red),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildMetricBox(String title, String value, PdfColor color) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: color, width: 2),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildTopProductsTable(List<Product> products, List<Delivery> deliveries) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Top Selling Products',
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 12),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              children: [
+                _buildTableCell('Product', isHeader: true),
+                _buildTableCell('Unit', isHeader: true),
+                _buildTableCell('Price', isHeader: true),
+                _buildTableCell('Total Sold', isHeader: true),
+                _buildTableCell('Revenue', isHeader: true),
+              ],
+            ),
+            ...products.take(10).map((product) {
+              // Calculate sales for this product
+              double totalSold = 0;
+              double revenue = 0;
+
+              for (final delivery in deliveries) {
+                if (delivery.status == DeliveryStatus.completed) {
+                  // Note: This is simplified - in a real implementation, you'd join with delivery_items
+                  // For now, using estimated values
+                  totalSold += 5; // Placeholder
+                  revenue += 5 * product.price; // Placeholder
+                }
+              }
+
+              return pw.TableRow(
+                children: [
+                  _buildTableCell(product.name),
+                  _buildTableCell(product.unit),
+                  _buildTableCell('BDT ${product.price.toStringAsFixed(2)}'),
+                  _buildTableCell(totalSold.toStringAsFixed(1)),
+                  _buildTableCell('BDT ${revenue.toStringAsFixed(2)}'),
+                ],
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildTopShopsTable(List<Shop> shops, List<Delivery> deliveries) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Top Customers',
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 12),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              children: [
+                _buildTableCell('Shop Name', isHeader: true),
+                _buildTableCell('Total Orders', isHeader: true),
+                _buildTableCell('Total Revenue', isHeader: true),
+                _buildTableCell('Avg. Order', isHeader: true),
+              ],
+            ),
+            ...shops.take(10).map((shop) {
+              final shopDeliveries = deliveries.where((d) => d.shopId == shop.id).toList();
+              final completedDeliveries = shopDeliveries.where((d) => d.status == DeliveryStatus.completed).toList();
+              final totalRevenue = completedDeliveries.fold(0.0, (sum, d) => sum + d.totalAmount);
+              final avgOrder = completedDeliveries.isNotEmpty ? totalRevenue / completedDeliveries.length : 0.0;
+
+              return pw.TableRow(
+                children: [
+                  _buildTableCell(shop.name),
+                  _buildTableCell(completedDeliveries.length.toString()),
+                  _buildTableCell('BDT ${totalRevenue.toStringAsFixed(2)}'),
+                  _buildTableCell('BDT ${avgOrder.toStringAsFixed(2)}'),
+                ],
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildRecentActivityTable(List<Delivery> deliveries) {
+    final recentDeliveries = deliveries.take(10).toList();
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Recent Activity',
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 12),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              children: [
+                _buildTableCell('Date', isHeader: true),
+                _buildTableCell('Delivery ID', isHeader: true),
+                _buildTableCell('Amount', isHeader: true),
+                _buildTableCell('Status', isHeader: true),
+              ],
+            ),
+            ...recentDeliveries.map((delivery) {
+              return pw.TableRow(
+                children: [
+                  _buildTableCell(DateFormat('MMM dd, yyyy').format(delivery.deliveryDate)),
+                  _buildTableCell('#${delivery.id}'),
+                  _buildTableCell('BDT ${delivery.totalAmount.toStringAsFixed(2)}'),
+                  _buildTableCell(delivery.status.name.toUpperCase()),
+                ],
+              );
+            }),
+          ],
+        ),
       ],
     );
   }

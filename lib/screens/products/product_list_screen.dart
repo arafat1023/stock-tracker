@@ -21,6 +21,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductProvider>().loadProducts();
+      context.read<StockProvider>().loadTransactions();
     });
   }
 
@@ -30,69 +31,82 @@ class _ProductListScreenState extends State<ProductListScreen> {
       appBar: AppBar(
         title: const Text('Products'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search products...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'Search by product name...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onChanged: (value) {
                 context.read<ProductProvider>().searchProducts(value);
               },
             ),
           ),
-        ),
-      ),
-      body: Consumer<ProductProvider>(
-        builder: (context, productProvider, child) {
-          if (productProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          Expanded(
+            child: Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (productProvider.products.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    productProvider.searchQuery.isEmpty
-                        ? 'No products found.\nTap + to add your first product.'
-                        : 'No products match your search.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+                if (productProvider.products.isEmpty) {
+                  return _buildEmptyState(context, productProvider.searchQuery.isNotEmpty);
+                }
 
-          return ListView.builder(
-            itemCount: productProvider.products.length,
-            itemBuilder: (context, index) {
-              final product = productProvider.products[index];
-              return ProductListTile(product: product);
-            },
-          );
-        },
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: productProvider.products.length,
+                  itemBuilder: (context, index) {
+                    final product = productProvider.products[index];
+                    return ProductCard(product: product);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         heroTag: "products_fab",
         onPressed: () => _navigateToAddProduct(context),
-        child: const Icon(Icons.add),
+        label: const Text('Add Product'),
+        icon: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, bool isSearching) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isSearching ? Icons.search_off : Icons.inventory_2_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            isSearching ? 'No Products Found' : 'Your Inventory is Empty',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isSearching
+                ? 'No products match your search query.'
+                : 'Tap the "Add Product" button to get started.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+        ],
       ),
     );
   }
@@ -103,7 +117,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
       MaterialPageRoute(
         builder: (context) => const ProductFormScreen(),
       ),
-    );
+    ).then((_) {
+      if (context.mounted) {
+        context.read<ProductProvider>().loadProducts();
+      }
+    });
   }
 
   @override
@@ -113,96 +131,112 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 }
 
-class ProductListTile extends StatelessWidget {
+class ProductCard extends StatelessWidget {
   final Product product;
 
-  const ProductListTile({
-    super.key,
-    required this.product,
-  });
+  const ProductCard({super.key, required this.product});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          child: Text(
-            product.name.isNotEmpty ? product.name[0].toUpperCase() : 'P',
-            style: const TextStyle(color: Colors.white),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _navigateToProductDetail(context, product),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(25),
+                    child: Icon(Icons.inventory, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      product.name,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () => _navigateToEditProduct(context, product),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _showDeleteConfirmation(context, product),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatItem('Price', '৳${product.price.toStringAsFixed(2)} / ${product.unit}'),
+                  Consumer<StockProvider>(
+                    builder: (context, stockProvider, child) {
+                      return FutureBuilder<double>(
+                        future: stockProvider.getProductStockBalance(product.id!),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const CircularProgressIndicator();
+                          }
+                          final stock = snapshot.data ?? 0.0;
+                          return _buildStockStatItem(stock);
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Unit: ${product.unit}'),
-            Text('Price: \$${product.price.toStringAsFixed(2)}'),
-            FutureBuilder<double>(
-              future: context.read<StockProvider>().getProductStockBalance(product.id!),
-              builder: (context, snapshot) {
-                final stock = snapshot.data ?? 0.0;
-                return Text(
-                  'Stock: ${stock.toStringAsFixed(1)}',
-                  style: TextStyle(
-                    color: stock > 0 ? Colors.green : Colors.orange,
-                    fontWeight: FontWeight.w500,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) => _handleMenuAction(context, value, product),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'view',
-              child: ListTile(
-                leading: Icon(Icons.visibility),
-                title: Text('View Details'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Edit'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete', style: TextStyle(color: Colors.red)),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-        ),
-        onTap: () => _navigateToProductDetail(context, product),
       ),
     );
   }
 
-  void _handleMenuAction(BuildContext context, String action, Product product) {
-    switch (action) {
-      case 'view':
-        _navigateToProductDetail(context, product);
-        break;
-      case 'edit':
-        _navigateToEditProduct(context, product);
-        break;
-      case 'delete':
-        _showDeleteConfirmation(context, product);
-        break;
+  Widget _buildStatItem(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildStockStatItem(double stock) {
+    Color statusColor;
+    if (stock > 10) {
+      statusColor = Colors.green;
+    } else if (stock > 0) {
+      statusColor = Colors.orange;
+    } else {
+      statusColor = Colors.red;
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text('Stock Level', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Row(
+          children: [
+            Text(
+              '${stock.toStringAsFixed(1)} units',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.circle, color: statusColor, size: 12),
+          ],
+        ),
+      ],
+    );
   }
 
   void _navigateToProductDetail(BuildContext context, Product product) {
@@ -220,7 +254,11 @@ class ProductListTile extends StatelessWidget {
       MaterialPageRoute(
         builder: (context) => ProductFormScreen(product: product),
       ),
-    );
+    ).then((_) {
+      if (context.mounted) {
+        context.read<ProductProvider>().loadProducts();
+      }
+    });
   }
 
   void _showDeleteConfirmation(BuildContext context, Product product) {
@@ -228,12 +266,9 @@ class ProductListTile extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${product.name}"?'),
+        content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -252,13 +287,14 @@ class ProductListTile extends StatelessWidget {
       await context.read<ProductProvider>().deleteProduct(product.id!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product.name} deleted successfully')),
+          SnackBar(content: Text('"${product.name}" was deleted.')),
         );
+        context.read<ProductProvider>().loadProducts();
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting product: $e')),
+          SnackBar(content: Text('Error deleting product: $e'), backgroundColor: Colors.red),
         );
       }
     }

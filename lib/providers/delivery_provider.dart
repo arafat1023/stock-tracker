@@ -100,4 +100,9 @@ class DeliveryProvider with ChangeNotifier {
       return null;
     }
   }
+
+  void clearData() {
+    _deliveries.clear();
+    notifyListeners();
+  }
 }

@@ -101,4 +101,11 @@ class ProductProvider with ChangeNotifier {
       return 0.0;
     }
   }
+
+  void clearData() {
+    _products.clear();
+    _filteredProducts.clear();
+    _searchQuery = '';
+    notifyListeners();
+  }
 }

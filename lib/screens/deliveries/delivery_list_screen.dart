@@ -38,110 +38,98 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
         title: const Text('Deliveries'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: _handleFilterAction,
+          IconButton(
             icon: const Icon(Icons.filter_list),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'all',
-                child: Text('All Deliveries'),
-              ),
-              const PopupMenuItem(
-                value: 'pending',
-                child: Text('Pending Only'),
-              ),
-              const PopupMenuItem(
-                value: 'completed',
-                child: Text('Completed Only'),
-              ),
-              const PopupMenuItem(
-                value: 'shop',
-                child: Text('Filter by Shop'),
-              ),
-            ],
+            onPressed: _showFilterOptions,
+            tooltip: 'Filter Deliveries',
           ),
         ],
       ),
-      body: Consumer<DeliveryProvider>(
-        builder: (context, deliveryProvider, child) {
-          if (deliveryProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          _buildFilterChips(),
+          Expanded(
+            child: Consumer<DeliveryProvider>(
+              builder: (context, deliveryProvider, child) {
+                if (deliveryProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          var filteredDeliveries = _applyFilters(deliveryProvider.deliveries);
+                final filteredDeliveries = _applyFilters(deliveryProvider.deliveries);
 
-          if (filteredDeliveries.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.local_shipping_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _getEmptyStateMessage(),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  if (_filterStatus != null || _filterShopId != null) ...[
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _clearFilters,
-                      child: const Text('Clear Filters'),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }
+                if (filteredDeliveries.isEmpty) {
+                  return _buildEmptyState(context);
+                }
 
-          return Column(
-            children: [
-              if (_filterStatus != null || _filterShopId != null)
-                _buildFilterChips(),
-              Expanded(
-                child: ListView.builder(
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8),
                   itemCount: filteredDeliveries.length,
                   itemBuilder: (context, index) {
                     final delivery = filteredDeliveries[index];
-                    return DeliveryListTile(delivery: delivery);
+                    return DeliveryCard(delivery: delivery);
                   },
-                ),
-              ),
-            ],
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         heroTag: "deliveries_fab",
         onPressed: () => _navigateToCreateDelivery(context),
-        child: const Icon(Icons.add),
+        label: const Text('New Delivery'),
+        icon: const Icon(Icons.add),
       ),
     );
   }
 
-  String _getEmptyStateMessage() {
-    if (_filterStatus != null || _filterShopId != null) {
-      return 'No deliveries match your filters.';
-    }
-    return 'No deliveries found.\nTap + to create your first delivery.';
+  Widget _buildEmptyState(BuildContext context) {
+    bool isFiltered = _filterStatus != null || _filterShopId != null;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isFiltered ? Icons.filter_alt_off_outlined : Icons.local_shipping_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            isFiltered ? 'No Deliveries Found' : 'No Deliveries Yet',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isFiltered
+                ? 'No deliveries match your current filters.'
+                : 'Tap the "New Delivery" button to get started.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+          if (isFiltered)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: ElevatedButton(
+                onPressed: _clearFilters,
+                child: const Text('Clear Filters'),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFilterChips() {
-    return Container(
-      padding: const EdgeInsets.all(8),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
       child: Wrap(
-        spacing: 8,
+        spacing: 8.0,
+        runSpacing: 4.0,
         children: [
           if (_filterStatus != null)
             Chip(
-              label: Text('Status: ${_filterStatus!.name.toUpperCase()}'),
+              label: Text('Status: ${_filterStatus!.name}'),
               onDeleted: () => setState(() => _filterStatus = null),
             ),
           if (_filterShopId != null)
@@ -149,7 +137,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               builder: (context, shopProvider, child) {
                 final shop = shopProvider.getShopById(_filterShopId!);
                 return Chip(
-                  label: Text('Shop: ${shop?.name ?? 'Unknown'}'),
+                  label: Text('Shop: ${shop?.name ?? "..."}'),
                   onDeleted: () => setState(() => _filterShopId = null),
                 );
               },
@@ -160,38 +148,65 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
   }
 
   List<Delivery> _applyFilters(List<Delivery> deliveries) {
-    var filtered = deliveries;
-
-    if (_filterStatus != null) {
-      filtered = filtered.where((d) => d.status == _filterStatus).toList();
-    }
-
-    if (_filterShopId != null) {
-      filtered = filtered.where((d) => d.shopId == _filterShopId).toList();
-    }
-
-    return filtered;
+    return deliveries.where((d) {
+      final statusMatch = _filterStatus == null || d.status == _filterStatus;
+      final shopMatch = _filterShopId == null || d.shopId == _filterShopId;
+      return statusMatch && shopMatch;
+    }).toList();
   }
 
-  void _handleFilterAction(String action) {
-    switch (action) {
-      case 'all':
-        _clearFilters();
-        break;
-      case 'pending':
-        setState(() {
-          _filterStatus = DeliveryStatus.pending;
-        });
-        break;
-      case 'completed':
-        setState(() {
-          _filterStatus = DeliveryStatus.completed;
-        });
-        break;
-      case 'shop':
-        _showShopFilterDialog();
-        break;
-    }
+  void _showFilterOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Filter Deliveries', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 16),
+              const Text('By Status'),
+              Wrap(
+                spacing: 8.0,
+                children: DeliveryStatus.values.map((status) {
+                  return FilterChip(
+                    label: Text(status.name),
+                    selected: _filterStatus == status,
+                    onSelected: (selected) {
+                      setState(() => _filterStatus = selected ? status : null);
+                      Navigator.pop(context);
+                    },
+                  );
+                }).toList(),
+              ),
+              const Divider(height: 24),
+              const Text('By Shop'),
+              Expanded(
+                child: Consumer<ShopProvider>(
+                  builder: (context, shopProvider, child) {
+                    return ListView.builder(
+                      itemCount: shopProvider.shops.length,
+                      itemBuilder: (context, index) {
+                        final shop = shopProvider.shops[index];
+                        return ListTile(
+                          title: Text(shop.name),
+                          onTap: () {
+                            setState(() => _filterShopId = shop.id);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _clearFilters() {
@@ -201,219 +216,170 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
     });
   }
 
-  void _showShopFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => Consumer<ShopProvider>(
-        builder: (context, shopProvider, child) {
-          return AlertDialog(
-            title: const Text('Filter by Shop'),
-            content: SizedBox(
-              width: double.maxFinite,
-              height: 300,
-              child: ListView.builder(
-                itemCount: shopProvider.shops.length,
-                itemBuilder: (context, index) {
-                  final shop = shopProvider.shops[index];
-                  return ListTile(
-                    title: Text(shop.name),
-                    subtitle: Text(shop.address),
-                    onTap: () {
-                      setState(() {
-                        _filterShopId = shop.id;
-                      });
-                      Navigator.pop(context);
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   void _navigateToCreateDelivery(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const DeliveryFormScreen(),
-      ),
-    );
+      MaterialPageRoute(builder: (context) => const DeliveryFormScreen()),
+    ).then((_) {
+      if (context.mounted) {
+        context.read<DeliveryProvider>().loadDeliveries();
+      }
+    });
   }
 }
 
-class DeliveryListTile extends StatelessWidget {
+class DeliveryCard extends StatelessWidget {
   final Delivery delivery;
 
-  const DeliveryListTile({
-    super.key,
-    required this.delivery,
-  });
+  const DeliveryCard({super.key, required this.delivery});
 
   @override
   Widget build(BuildContext context) {
+    final shop = context.watch<ShopProvider>().getShopById(delivery.shopId);
+
     Color statusColor;
-    IconData statusIcon;
+    String statusText;
 
     switch (delivery.status) {
       case DeliveryStatus.pending:
         statusColor = Colors.orange;
-        statusIcon = Icons.pending;
+        statusText = 'Pending';
         break;
       case DeliveryStatus.completed:
         statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
+        statusText = 'Completed';
         break;
       case DeliveryStatus.cancelled:
         statusColor = Colors.red;
-        statusIcon = Icons.cancel;
+        statusText = 'Cancelled';
         break;
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: statusColor,
-          child: Icon(statusIcon, color: Colors.white),
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Delivery #${delivery.id}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Text(
-              '\$${delivery.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Consumer<ShopProvider>(
-              builder: (context, shopProvider, child) {
-                final shop = shopProvider.getShopById(delivery.shopId);
-                return Text(
-                  'Shop: ${shop?.name ?? 'Unknown'}',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                );
-              },
-            ),
-            Text(
-              'Date: ${DateFormat('MMM dd, yyyy').format(delivery.deliveryDate)}',
-            ),
-            if (delivery.notes.isNotEmpty)
-              Text(
-                delivery.notes,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) => _handleMenuAction(context, value, delivery),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'view',
-              child: ListTile(
-                leading: Icon(Icons.visibility),
-                title: Text('View Details'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            if (delivery.status == DeliveryStatus.pending)
-              const PopupMenuItem(
-                value: 'complete',
-                child: ListTile(
-                  leading: Icon(Icons.check_circle, color: Colors.green),
-                  title: Text('Mark Completed', style: TextStyle(color: Colors.green)),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            if (delivery.status == DeliveryStatus.pending)
-              const PopupMenuItem(
-                value: 'cancel',
-                child: ListTile(
-                  leading: Icon(Icons.cancel, color: Colors.red),
-                  title: Text('Cancel Delivery', style: TextStyle(color: Colors.red)),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            const PopupMenuItem(
-              value: 'pdf',
-              child: ListTile(
-                leading: Icon(Icons.picture_as_pdf, color: Colors.blue),
-                title: Text('Generate PDF', style: TextStyle(color: Colors.blue)),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-        ),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
         onTap: () => _navigateToDeliveryDetail(context, delivery),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Delivery #${delivery.id}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withAlpha(25),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (shop != null)
+                Row(
+                  children: [
+                    const Icon(Icons.store, size: 16, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(shop.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(DateFormat.yMMMd().format(delivery.deliveryDate), style: const TextStyle(fontSize: 14)),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '৳${delivery.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                  ),
+                  Row(
+                    children: [
+                      if (delivery.status == DeliveryStatus.pending)
+                        TextButton.icon(
+                          icon: const Icon(Icons.check_circle, color: Colors.green),
+                          label: const Text('Complete', style: TextStyle(color: Colors.green)),
+                          onPressed: () => _updateDeliveryStatus(context, delivery, DeliveryStatus.completed),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.picture_as_pdf, color: Colors.blue),
+                        onPressed: () => _generatePDF(context, delivery),
+                        tooltip: 'Generate PDF',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
-  }
-
-  void _handleMenuAction(BuildContext context, String action, Delivery delivery) {
-    switch (action) {
-      case 'view':
-        _navigateToDeliveryDetail(context, delivery);
-        break;
-      case 'complete':
-        _updateDeliveryStatus(context, delivery, DeliveryStatus.completed);
-        break;
-      case 'cancel':
-        _updateDeliveryStatus(context, delivery, DeliveryStatus.cancelled);
-        break;
-      case 'pdf':
-        _generatePDF(context, delivery);
-        break;
-    }
   }
 
   void _navigateToDeliveryDetail(BuildContext context, Delivery delivery) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DeliveryDetailScreen(delivery: delivery),
-      ),
+      MaterialPageRoute(builder: (context) => DeliveryDetailScreen(delivery: delivery)),
     );
   }
 
   void _updateDeliveryStatus(BuildContext context, Delivery delivery, DeliveryStatus status) async {
-    try {
-      await context.read<DeliveryProvider>().updateDeliveryStatus(delivery.id!, status);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delivery ${status.name} successfully')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating delivery: $e')),
-        );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirm Action'),
+        content: Text('Are you sure you want to mark this delivery as ${status.name}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(status.name, style: TextStyle(color: status == DeliveryStatus.completed ? Colors.green : Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await context.read<DeliveryProvider>().updateDeliveryStatus(delivery.id!, status);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delivery marked as ${status.name}.')),
+          );
+          context.read<DeliveryProvider>().loadDeliveries();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
 
   void _generatePDF(BuildContext context, Delivery delivery) async {
+    // ... (PDF generation logic remains the same)
     try {
       final deliveryProvider = context.read<DeliveryProvider>();
       final shopProvider = context.read<ShopProvider>();
@@ -445,7 +411,7 @@ class DeliveryListTile extends StatelessWidget {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generated and shared successfully')),
+          const SnackBar(content: Text('PDF generated and ready to share.')),
         );
       }
     } catch (e) {

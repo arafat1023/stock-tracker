@@ -238,6 +238,30 @@ class DatabaseService {
     return result.first['balance'] as double? ?? 0.0;
   }
 
+  Future<double> getAvailableStock(int productId) async {
+    final stockBalance = await getProductStockBalance(productId);
+
+    // Subtract pending delivery quantities
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT SUM(di.quantity) as pending_deliveries
+      FROM delivery_items di
+      JOIN deliveries d ON di.delivery_id = d.id
+      WHERE di.product_id = ? AND d.status = 'pending'
+    ''', [productId]);
+
+    final pendingDeliveries = result.first['pending_deliveries'] as double? ?? 0.0;
+    return stockBalance - pendingDeliveries;
+  }
+
+  Future<Map<int, double>> getAvailableStockForProducts(List<int> productIds) async {
+    final Map<int, double> stockMap = {};
+    for (final productId in productIds) {
+      stockMap[productId] = await getAvailableStock(productId);
+    }
+    return stockMap;
+  }
+
   // Delivery Operations
   Future<int> insertDelivery(Delivery delivery) async {
     final db = await database;
@@ -330,12 +354,19 @@ class DatabaseService {
   Future<void> clearAllData() async {
     final db = await database;
     await db.transaction((txn) async {
+      // Delete all data
       await txn.delete('delivery_items');
       await txn.delete('deliveries');
       await txn.delete('stock_transactions');
       await txn.delete('returns');
       await txn.delete('products');
       await txn.delete('shops');
+
+      // Reset auto-increment counters by updating sqlite_sequence table
+      await txn.delete('sqlite_sequence');
+
+      // Alternative approach: Update each table's sequence to 0
+      await txn.rawUpdate("UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('products', 'shops', 'deliveries', 'delivery_items', 'stock_transactions', 'returns')");
     });
   }
 

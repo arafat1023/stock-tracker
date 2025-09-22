@@ -35,76 +35,73 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           IconButton(
             onPressed: () => _navigateToEdit(context),
             icon: const Icon(Icons.edit),
+            tooltip: 'Edit Product',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProductInfoCard(),
-            const SizedBox(height: 16),
-            _buildStockCard(),
-            const SizedBox(height: 16),
-            _buildRecentTransactions(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStockCard(),
+              const SizedBox(height: 16),
+              _buildProductInfoCard(),
+              const SizedBox(height: 16),
+              _buildRecentTransactions(),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: "product_detail_fab",
         onPressed: () => _navigateToStockTransaction(context),
-        label: const Text('Stock Transaction'),
-        icon: const Icon(Icons.add),
+        label: const Text('New Stock Entry'),
+        icon: const Icon(Icons.add_shopping_cart),
       ),
     );
   }
 
+  Future<void> _refreshData() async {
+    await context.read<StockProvider>().loadTransactions(productId: widget.product.id);
+  }
+
   Widget _buildProductInfoCard() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Product Information',
-              style: Theme.of(context).textTheme.headlineSmall,
+              'Product Details',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow('Name', widget.product.name),
-            _buildInfoRow('Unit', widget.product.unit),
-            _buildInfoRow('Price', '\$${widget.product.price.toStringAsFixed(2)}'),
-            _buildInfoRow('Created', DateFormat('MMM dd, yyyy').format(widget.product.createdAt)),
-            _buildInfoRow('Updated', DateFormat('MMM dd, yyyy').format(widget.product.updatedAt)),
+            _buildInfoRow(Icons.label, 'Unit', widget.product.unit),
+            _buildInfoRow(Icons.attach_money, 'Price', '৳${widget.product.price.toStringAsFixed(2)}'),
+            _buildInfoRow(Icons.calendar_today, 'Created On', DateFormat.yMMMd().format(widget.product.createdAt)),
+            _buildInfoRow(Icons.edit_calendar, 'Last Updated', DateFormat.yMMMd().format(widget.product.updatedAt)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
+          Icon(icon, color: Colors.grey, size: 20),
+          const SizedBox(width: 16),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
@@ -112,126 +109,99 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildStockCard() {
     return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<double>(
+          future: context.read<StockProvider>().getProductStockBalance(widget.product.id!),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final stock = snapshot.data ?? 0.0;
+
+            Color statusColor;
+            String statusText;
+            if (stock > 10) {
+              statusColor = Colors.green;
+              statusText = 'In Stock';
+            } else if (stock > 0) {
+              statusColor = Colors.orange;
+              statusText = 'Low Stock';
+            } else {
+              statusColor = Colors.red;
+              statusText = 'Out of Stock';
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Current Inventory',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStockMetric('Quantity', '${stock.toStringAsFixed(1)} ${widget.product.unit}'),
+                    _buildStockMetric('Value', '৳${(stock * widget.product.price).toStringAsFixed(2)}'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(25),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info, color: statusColor, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        statusText,
+                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockMetric(String title, String value) {
+    return Column(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildRecentTransactions() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Current Stock',
-              style: Theme.of(context).textTheme.headlineSmall,
+              'Recent Stock History',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            FutureBuilder<double>(
-              future: context.read<StockProvider>().getProductStockBalance(widget.product.id!),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-
-                final stock = snapshot.data ?? 0.0;
-                final stockValue = stock * widget.product.price;
-
-                return Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Quantity',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              '${stock.toStringAsFixed(1)} ${widget.product.unit}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: stock > 0 ? Colors.green : Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              'Value',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              '\$${stockValue.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (stock <= 0)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          border: Border.all(color: Colors.orange),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.warning, color: Colors.orange),
-                            SizedBox(width: 8),
-                            Text(
-                              'Low stock! Consider restocking.',
-                              style: TextStyle(color: Colors.orange),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentTransactions() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Transactions',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: Navigate to full transaction history
-                  },
-                  child: const Text('View All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Consumer<StockProvider>(
               builder: (context, stockProvider, child) {
                 if (stockProvider.isLoading) {
@@ -242,17 +212,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                 if (transactions.isEmpty) {
                   return const Center(
-                    child: Text(
-                      'No transactions found',
-                      style: TextStyle(color: Colors.grey),
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No transactions recorded yet.', style: TextStyle(color: Colors.grey)),
                     ),
                   );
                 }
 
                 return Column(
-                  children: transactions.map((transaction) {
-                    return _buildTransactionTile(transaction);
-                  }).toList(),
+                  children: transactions.map((t) => _buildTransactionTile(t)).toList(),
                 );
               },
             ),
@@ -265,46 +233,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _buildTransactionTile(StockTransaction transaction) {
     Color typeColor;
     IconData typeIcon;
-    String typeText;
+    String sign;
 
     switch (transaction.type) {
       case StockTransactionType.stockIn:
         typeColor = Colors.green;
-        typeIcon = Icons.add_circle;
-        typeText = 'Stock In';
+        typeIcon = Icons.arrow_upward;
+        sign = '+';
         break;
       case StockTransactionType.stockOut:
         typeColor = Colors.red;
-        typeIcon = Icons.remove_circle;
-        typeText = 'Stock Out';
+        typeIcon = Icons.arrow_downward;
+        sign = '-';
         break;
       case StockTransactionType.adjustment:
         typeColor = Colors.blue;
-        typeIcon = Icons.edit;
-        typeText = 'Adjustment';
+        typeIcon = Icons.sync_alt;
+        sign = '~';
         break;
     }
 
     return ListTile(
-      leading: Icon(typeIcon, color: typeColor),
-      title: Text(typeText),
-      subtitle: Text(transaction.reference),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '${transaction.quantity.toStringAsFixed(1)} ${widget.product.unit}',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: typeColor,
-            ),
-          ),
-          Text(
-            DateFormat('MMM dd').format(transaction.date),
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+      leading: CircleAvatar(backgroundColor: typeColor, child: Icon(typeIcon, color: Colors.white, size: 20)),
+      title: Text(transaction.reference, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(DateFormat.yMMMd().format(transaction.date)),
+      trailing: Text(
+        '$sign${transaction.quantity.toStringAsFixed(1)} ${widget.product.unit}',
+        style: TextStyle(fontWeight: FontWeight.bold, color: typeColor, fontSize: 16),
       ),
     );
   }
@@ -312,18 +267,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void _navigateToEdit(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ProductFormScreen(product: widget.product),
-      ),
-    );
+      MaterialPageRoute(builder: (context) => ProductFormScreen(product: widget.product)),
+    ).then((_) => _refreshData());
   }
 
   void _navigateToStockTransaction(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => StockTransactionScreen(product: widget.product),
-      ),
-    );
+      MaterialPageRoute(builder: (context) => StockTransactionScreen(product: widget.product)),
+    ).then((_) => _refreshData());
   }
 }

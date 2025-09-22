@@ -1,7 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../services/backup_service.dart';
+import '../../providers/product_provider.dart';
+import '../../providers/shop_provider.dart';
+import '../../providers/delivery_provider.dart';
 import 'package:file_picker/file_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -50,8 +54,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildDataManagementSection(),
                     const SizedBox(height: 24),
                     _buildBackupHistorySection(),
-                    const SizedBox(height: 24),
-                    _buildAppInfoSection(),
                   ],
                 ),
               ),
@@ -280,46 +282,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAppInfoSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'App Information',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('Version'),
-                  subtitle: const Text('1.0.0'),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.code),
-                  title: const Text('Built with'),
-                  subtitle: const Text('Flutter & SQLite'),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.storage),
-                  title: const Text('Storage'),
-                  subtitle: const Text('Local SQLite Database'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Future<void> _createBackup() async {
     setState(() => _isLoading = true);
@@ -492,12 +454,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _isLoading = true);
       try {
         await _backupService.clearAllData();
+
+        // Refresh all providers to clear cached data
+        if (mounted) {
+          context.read<ProductProvider>().clearData();
+          context.read<ShopProvider>().clearData();
+          context.read<DeliveryProvider>().clearData();
+        }
+
         setState(() => _isLoading = false);
+        await _loadBackupFiles(); // Refresh backup files list
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('All data cleared successfully')),
           );
+
+          // Pop back to home screen and ensure dashboard refreshes
+          Navigator.of(context).popUntil((route) => route.isFirst);
         }
       } catch (e) {
         setState(() => _isLoading = false);
