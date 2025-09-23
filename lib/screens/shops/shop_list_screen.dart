@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/delivery_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/shop.dart';
+import '../../utils/app_strings.dart';
 import 'shop_form_screen.dart';
 import 'shop_detail_screen.dart';
 import '../deliveries/delivery_form_screen.dart';
@@ -28,11 +30,14 @@ class _ShopListScreenState extends State<ShopListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shops'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.shopList(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: Column(
         children: [
           Padding(
@@ -40,7 +45,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by shop name or address...',
+                hintText: AppStrings.searchShops(isBengali),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -59,7 +64,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
                 }
 
                 if (shopProvider.shops.isEmpty) {
-                  return _buildEmptyState(context, shopProvider.searchQuery.isNotEmpty);
+                  return _buildEmptyState(context, shopProvider.searchQuery.isNotEmpty, isBengali);
                 }
 
                 return ListView.builder(
@@ -67,7 +72,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
                   itemCount: shopProvider.shops.length,
                   itemBuilder: (context, index) {
                     final shop = shopProvider.shops[index];
-                    return ShopCard(shop: shop);
+                    return ShopCard(shop: shop, isBengali: isBengali);
                   },
                 );
               },
@@ -75,16 +80,18 @@ class _ShopListScreenState extends State<ShopListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "shops_fab",
-        onPressed: () => _navigateToAddShop(context),
-        label: const Text('Add Shop'),
-        icon: const Icon(Icons.add),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: "shops_fab",
+            onPressed: () => _navigateToAddShop(context),
+            label: Text(AppStrings.addShop(isBengali)),
+            icon: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, bool isSearching) {
+  Widget _buildEmptyState(BuildContext context, bool isSearching, bool isBengali) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -96,7 +103,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            isSearching ? 'No Shops Found' : 'You Have No Shops',
+            isSearching ? AppStrings.noShopsFound(isBengali) : AppStrings.createFirstShop(isBengali),
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -134,8 +141,9 @@ class _ShopListScreenState extends State<ShopListScreen> {
 
 class ShopCard extends StatelessWidget {
   final Shop shop;
+  final bool isBengali;
 
-  const ShopCard({super.key, required this.shop});
+  const ShopCard({super.key, required this.shop, required this.isBengali});
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +174,7 @@ class ShopCard extends StatelessWidget {
                   ),
                   TextButton.icon(
                     icon: const Icon(Icons.local_shipping, color: Colors.blue, size: 20),
-                    label: const Text('Deliver', style: TextStyle(color: Colors.blue)),
+                    label: Text(AppStrings.deliveries(isBengali), style: const TextStyle(color: Colors.blue)),
                     onPressed: () => _createDelivery(context, shop),
                   ),
                 ],
@@ -198,7 +206,7 @@ class ShopCard extends StatelessWidget {
                   Consumer<DeliveryProvider>(
                     builder: (context, deliveryProvider, child) {
                       final deliveryCount = deliveryProvider.deliveries.where((d) => d.shopId == shop.id).length;
-                      return _buildStatItem('Total Deliveries', deliveryCount.toString());
+                      return _buildStatItem(AppStrings.deliveries(isBengali), deliveryCount.toString());
                     },
                   ),
                   Row(
@@ -267,17 +275,17 @@ class ShopCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Shop'),
+        title: Text(AppStrings.delete(isBengali)),
         content: Text('Are you sure you want to delete "${shop.name}"? This will also delete all associated deliveries.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppStrings.cancel(isBengali))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _deleteShop(context, shop);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(AppStrings.delete(isBengali)),
           ),
         ],
       ),

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/stock_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/product.dart';
+import '../../utils/app_strings.dart';
 import 'product_form_screen.dart';
 import 'product_detail_screen.dart';
 
@@ -27,11 +29,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Products'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.productList(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: Column(
         children: [
           Padding(
@@ -39,7 +44,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by product name...',
+                hintText: AppStrings.searchProducts(isBengali),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -58,7 +63,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 }
 
                 if (productProvider.products.isEmpty) {
-                  return _buildEmptyState(context, productProvider.searchQuery.isNotEmpty);
+                  return _buildEmptyState(context, productProvider.searchQuery.isNotEmpty, isBengali);
                 }
 
                 return ListView.builder(
@@ -66,7 +71,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   itemCount: productProvider.products.length,
                   itemBuilder: (context, index) {
                     final product = productProvider.products[index];
-                    return ProductCard(product: product);
+                    return ProductCard(product: product, isBengali: isBengali);
                   },
                 );
               },
@@ -74,16 +79,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "products_fab",
-        onPressed: () => _navigateToAddProduct(context),
-        label: const Text('Add Product'),
-        icon: const Icon(Icons.add),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: "products_fab",
+            onPressed: () => _navigateToAddProduct(context),
+            label: Text(AppStrings.addProduct(isBengali)),
+            icon: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, bool isSearching) {
+  Widget _buildEmptyState(BuildContext context, bool isSearching, bool isBengali) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -95,14 +102,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            isSearching ? 'No Products Found' : 'Your Inventory is Empty',
+            isSearching ? AppStrings.noProductsFound(isBengali) : AppStrings.createFirstProduct(isBengali),
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             isSearching
-                ? 'No products match your search query.'
-                : 'Tap the "Add Product" button to get started.',
+                ? AppStrings.noProductsFound(isBengali)
+                : AppStrings.createFirstProduct(isBengali),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
@@ -133,8 +140,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final bool isBengali;
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({super.key, required this.product, required this.isBengali});
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +185,7 @@ class ProductCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildStatItem('Price', '৳${product.price.toStringAsFixed(2)} / ${product.unit}'),
+                  _buildStatItem(AppStrings.price(isBengali), '৳${product.price.toStringAsFixed(2)} / ${product.unit}'),
                   Consumer<StockProvider>(
                     builder: (context, stockProvider, child) {
                       return FutureBuilder<double>(
@@ -187,7 +195,7 @@ class ProductCard extends StatelessWidget {
                             return const CircularProgressIndicator();
                           }
                           final stock = snapshot.data ?? 0.0;
-                          return _buildStockStatItem(stock);
+                          return _buildStockStatItem(stock, isBengali);
                         },
                       );
                     },
@@ -211,7 +219,7 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStockStatItem(double stock) {
+  Widget _buildStockStatItem(double stock, bool isBengali) {
     Color statusColor;
     if (stock > 10) {
       statusColor = Colors.green;
@@ -224,7 +232,7 @@ class ProductCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text('Stock Level', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(AppStrings.currentStock(isBengali), style: const TextStyle(fontSize: 12, color: Colors.grey)),
         Row(
           children: [
             Text(
@@ -262,20 +270,21 @@ class ProductCard extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(BuildContext context, Product product) {
+    final isBengali = Provider.of<LanguageProvider>(context, listen: false).isBengali;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
+        title: Text(AppStrings.delete(isBengali)),
         content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppStrings.cancel(isBengali))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _deleteProduct(context, product);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(AppStrings.delete(isBengali)),
           ),
         ],
       ),

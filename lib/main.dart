@@ -6,6 +6,7 @@ import 'providers/product_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/delivery_provider.dart';
 import 'providers/stock_provider.dart';
+import 'providers/language_provider.dart';
 import 'screens/home_screen.dart';
 
 void main() {
@@ -29,6 +30,7 @@ class StockTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => ShopProvider()),
         ChangeNotifierProvider(create: (context) => DeliveryProvider()),
         ChangeNotifierProvider(create: (context) => StockProvider()),
+        ChangeNotifierProvider(create: (context) => LanguageProvider()),
       ],
       child: MaterialApp(
         title: 'Stock Tracker',

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/product.dart';
+import '../../utils/app_strings.dart';
 
 class ProductFormScreen extends StatefulWidget {
   final Product? product;
@@ -32,11 +34,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Product' : 'Add New Product'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(isEditing ? AppStrings.editProduct(isBengali) : AppStrings.addNewProduct(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -50,7 +55,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Product Details',
+                    AppStrings.productName(isBengali),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -61,15 +66,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Product Name',
-                      hintText: 'e.g., Apples, T-Shirt, etc.',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.inventory_2),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.productName(isBengali),
+                      hintText: AppStrings.productNameHint(isBengali),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.inventory_2),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a product name';
+                        return AppStrings.pleaseEnterProductName(isBengali);
                       }
                       return null;
                     },
@@ -77,15 +82,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _unitController,
-                    decoration: const InputDecoration(
-                      labelText: 'Unit of Measure',
-                      hintText: 'e.g., kg, pcs, L, m',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.straighten),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.unit(isBengali),
+                      hintText: AppStrings.unitHint(isBengali),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.straighten),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a unit';
+                        return AppStrings.pleaseEnterUnit(isBengali);
                       }
                       return null;
                     },
@@ -93,20 +98,20 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Price per Unit',
-                      hintText: 'Enter the selling price',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.attach_money),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.price(isBengali),
+                      hintText: AppStrings.priceHint(isBengali),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.attach_money),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a price';
+                        return AppStrings.pleaseEnterValidPrice(isBengali);
                       }
                       final price = double.tryParse(value);
                       if (price == null || price < 0) {
-                        return 'Please enter a valid price';
+                        return AppStrings.pleaseEnterValidPrice(isBengali);
                       }
                       return null;
                     },
@@ -124,7 +129,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       ),
                       icon: Icon(isEditing ? Icons.save : Icons.add),
                       label: Text(
-                        isEditing ? 'Save Changes' : 'Add Product',
+                        isEditing ? AppStrings.save(isBengali) : AppStrings.addProduct(isBengali),
                         style: const TextStyle(fontSize: 18),
                       ),
                     ),
@@ -135,6 +140,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 

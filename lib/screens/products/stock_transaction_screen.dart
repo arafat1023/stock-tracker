@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/product.dart';
 import '../../models/stock_transaction.dart';
 import '../../providers/stock_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 
 class StockTransactionScreen extends StatefulWidget {
   final Product product;
@@ -22,11 +24,14 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Stock Entry'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.stockTransactions(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -36,17 +41,19 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
             children: [
               _buildCurrentStockCard(),
               const SizedBox(height: 24),
-              _buildStep(1, 'Select Transaction Type'),
-              _buildTypeSelection(),
+              _buildStep(1, AppStrings.transactionType(isBengali)),
+              _buildTypeSelection(isBengali),
               const SizedBox(height: 24),
-              _buildStep(2, 'Enter Details'),
-              _buildDetailsCard(),
+              _buildStep(2, AppStrings.productDetails(isBengali)),
+              _buildDetailsCard(isBengali),
               const SizedBox(height: 32),
-              _buildSaveButton(),
+              _buildSaveButton(isBengali),
             ],
           ),
         ),
       ),
+        );
+      },
     );
   }
 
@@ -86,7 +93,7 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
 
                 final stock = snapshot.data ?? 0.0;
                 return Text(
-                  'Current Stock: ${stock.toStringAsFixed(1)} ${widget.product.unit}',
+                  '${AppStrings.currentStock(context.read<LanguageProvider>().isBengali)}: ${stock.toStringAsFixed(1)} ${widget.product.unit}',
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 );
               },
@@ -97,7 +104,7 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
     );
   }
 
-  Widget _buildTypeSelection() {
+  Widget _buildTypeSelection(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -105,9 +112,9 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildTypeTile(StockTransactionType.stockIn, 'Stock In', 'Add new items to inventory.', Icons.add_circle, Colors.green),
-            _buildTypeTile(StockTransactionType.stockOut, 'Stock Out', 'Remove items from inventory (e.g., sold, used). ', Icons.remove_circle, Colors.red),
-            _buildTypeTile(StockTransactionType.adjustment, 'Adjustment', 'Correct the inventory count (e.g., damaged goods). ', Icons.edit, Colors.blue),
+            _buildTypeTile(StockTransactionType.stockIn, AppStrings.stockIn(isBengali), 'Add new items to inventory.', Icons.add_circle, Colors.green),
+            _buildTypeTile(StockTransactionType.stockOut, AppStrings.stockOut(isBengali), 'Remove items from inventory (e.g., sold, used). ', Icons.remove_circle, Colors.red),
+            _buildTypeTile(StockTransactionType.adjustment, AppStrings.adjustment(isBengali), 'Correct the inventory count (e.g., damaged goods). ', Icons.edit, Colors.blue),
           ],
         ),
       ),
@@ -125,7 +132,7 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
     );
   }
 
-  Widget _buildDetailsCard() {
+  Widget _buildDetailsCard(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -136,26 +143,26 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
             TextFormField(
               controller: _quantityController,
               decoration: InputDecoration(
-                labelText: 'Quantity (${widget.product.unit})',
+                labelText: '${AppStrings.quantity(isBengali)} (${widget.product.unit})',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.format_list_numbered),
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Please enter a quantity';
+                if (value == null || value.trim().isEmpty) return AppStrings.pleaseEnterQuantity(isBengali);
                 final quantity = double.tryParse(value);
-                if (quantity == null || quantity <= 0) return 'Please enter a valid quantity';
+                if (quantity == null || quantity <= 0) return AppStrings.pleaseEnterValidQuantity(isBengali);
                 return null;
               },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _referenceController,
-              decoration: const InputDecoration(
-                labelText: 'Reference (Optional)',
-                hintText: 'e.g., PO #123, Damaged goods',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.notes),
+              decoration: InputDecoration(
+                labelText: AppStrings.notes(isBengali),
+                hintText: AppStrings.notesHint(isBengali),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.notes),
               ),
               maxLines: 2,
             ),
@@ -165,7 +172,7 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(bool isBengali) {
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -177,7 +184,7 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         icon: const Icon(Icons.save),
-        label: const Text('Save Transaction', style: TextStyle(fontSize: 18)),
+        label: Text(AppStrings.save(isBengali), style: const TextStyle(fontSize: 18)),
       ),
     );
   }

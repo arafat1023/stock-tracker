@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'products/product_list_screen.dart';
 import 'shops/shop_list_screen.dart';
 import 'deliveries/delivery_list_screen.dart';
@@ -6,6 +7,8 @@ import 'reports/reports_screen.dart';
 import 'reports/transaction_report_screen.dart';
 import 'settings/settings_screen.dart';
 import '../services/report_service.dart';
+import '../providers/language_provider.dart';
+import '../utils/app_strings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,10 +60,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Stock Tracker Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.appTitle(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -83,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Quick Summary Section
             if (!_isLoading && _metrics != null) ...[
               Text(
-                'At a Glance',
+                AppStrings.atGlance(isBengali),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -100,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   children: [
                     Expanded(
                       child: _buildQuickStat(
-                        'Total Sales',
+                        AppStrings.totalSales(isBengali),
                         '৳${_metrics!.totalRevenue.toStringAsFixed(0)}',
                         Icons.trending_up,
                         Colors.green,
@@ -113,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     Expanded(
                       child: _buildQuickStat(
-                        'Stock Value',
+                        AppStrings.stockValue(isBengali),
                         '৳${_metrics!.totalStockValue.toStringAsFixed(0)}',
                         Icons.inventory,
                         Colors.blue,
@@ -126,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     Expanded(
                       child: _buildQuickStat(
-                        'Pending',
+                        AppStrings.pending(isBengali),
                         '${_metrics!.pendingDeliveries}',
                         Icons.pending,
                         Colors.orange,
@@ -148,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         _loadMetrics();
                       },
                       icon: const Icon(Icons.swap_horiz),
-                      label: const Text('View All Transactions'),
+                      label: Text(AppStrings.viewAllTransactions(isBengali)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple,
                         foregroundColor: Colors.white,
@@ -163,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
             // Main Navigation Section
             Text(
-              'Main Sections',
+              AppStrings.mainSections(isBengali),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -177,8 +183,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 children: [
             _buildDashboardCard(
               context,
-              title: 'Products',
-              subtitle: 'Manage your inventory',
+              title: AppStrings.products(isBengali),
+              subtitle: AppStrings.manageInventory(isBengali),
               icon: Icons.inventory,
               color: Colors.blue,
               onTap: () async {
@@ -191,8 +197,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             _buildDashboardCard(
               context,
-              title: 'Shops',
-              subtitle: 'Manage your customers',
+              title: AppStrings.shops(isBengali),
+              subtitle: AppStrings.manageCustomers(isBengali),
               icon: Icons.store,
               color: Colors.green,
               onTap: () async {
@@ -205,8 +211,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             _buildDashboardCard(
               context,
-              title: 'Deliveries',
-              subtitle: 'Track your deliveries',
+              title: AppStrings.deliveries(isBengali),
+              subtitle: AppStrings.trackDeliveries(isBengali),
               icon: Icons.local_shipping,
               color: Colors.orange,
               onTap: () async {
@@ -219,8 +225,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             _buildDashboardCard(
               context,
-              title: 'Reports',
-              subtitle: 'View sales and stock analytics',
+              title: AppStrings.reports(isBengali),
+              subtitle: AppStrings.viewAnalytics(isBengali),
               icon: Icons.analytics,
               color: Colors.purple,
               onTap: () async {
@@ -237,6 +243,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
+        );
+      },
     );
   }
 

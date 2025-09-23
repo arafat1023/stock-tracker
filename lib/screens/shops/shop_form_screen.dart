@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/shop_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/shop.dart';
+import '../../utils/app_strings.dart';
 
 class ShopFormScreen extends StatefulWidget {
   final Shop? shop;
@@ -32,11 +34,14 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Shop' : 'Add New Shop'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(isEditing ? AppStrings.editShop(isBengali) : AppStrings.addNewShop(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -50,7 +55,7 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Shop Details',
+                    AppStrings.shopDetails(isBengali),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -61,15 +66,15 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Shop Name',
-                      hintText: 'e.g., John\'s General Store',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.store),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.shopName(isBengali),
+                      hintText: AppStrings.shopNameHint(isBengali),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.store),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a shop name';
+                        return AppStrings.pleaseEnterShopName(isBengali);
                       }
                       return null;
                     },
@@ -77,16 +82,16 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _addressController,
-                    decoration: const InputDecoration(
-                      labelText: 'Address',
-                      hintText: 'e.g., 123 Main St, Anytown, USA',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.location_on),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.address(isBengali),
+                      hintText: AppStrings.addressHint(isBengali),
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.location_on),
                     ),
                     maxLines: 2,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Please enter an address';
+                        return AppStrings.pleaseEnterAddress(isBengali);
                       }
                       return null;
                     },
@@ -94,10 +99,10 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _contactController,
-                    decoration: const InputDecoration(
-                      labelText: 'Contact (Optional)',
-                      hintText: 'Phone number or email',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.contact(isBengali),
+                      hintText: AppStrings.phoneHint(isBengali),
+                      border: const OutlineInputBorder(),
                       prefixIcon: Icon(Icons.contact_phone),
                     ),
                     keyboardType: TextInputType.text,
@@ -115,7 +120,7 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
                       ),
                       icon: Icon(isEditing ? Icons.save : Icons.add),
                       label: Text(
-                        isEditing ? 'Save Changes' : 'Add Shop',
+                        isEditing ? AppStrings.save(isBengali) : AppStrings.addShop(isBengali),
                         style: const TextStyle(fontSize: 18),
                       ),
                     ),
@@ -126,6 +131,8 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 
