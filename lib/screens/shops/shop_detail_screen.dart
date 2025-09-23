@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../models/shop.dart';
 import '../../models/delivery.dart';
 import '../../providers/delivery_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 import 'shop_form_screen.dart';
 import '../deliveries/delivery_form_screen.dart';
 import '../deliveries/delivery_detail_screen.dart';
@@ -30,44 +32,49 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.shop.name),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: () => _navigateToEdit(context),
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit Shop',
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildShopInfoCard(),
-              const SizedBox(height: 16),
-              _buildDeliveryStatsCard(),
-              const SizedBox(height: 16),
-              _buildRecentDeliveries(),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.shop.name),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                onPressed: () => _navigateToEdit(context),
+                icon: const Icon(Icons.edit),
+                tooltip: AppStrings.edit(isBengali),
+              ),
             ],
           ),
+        body: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildShopInfoCard(isBengali),
+                const SizedBox(height: 16),
+                _buildDeliveryStatsCard(isBengali),
+                const SizedBox(height: 16),
+                _buildRecentDeliveries(isBengali),
+              ],
+            ),
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "shop_detail_fab",
-        onPressed: () => _createDelivery(context),
-        label: const Text('New Delivery'),
-        icon: const Icon(Icons.add),
-      ),
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: "shop_detail_fab",
+          onPressed: () => _createDelivery(context),
+          label: Text(AppStrings.newDelivery(isBengali)),
+          icon: const Icon(Icons.add),
+        ),
+      );
+      },
     );
   }
 
-  Widget _buildShopInfoCard() {
+  Widget _buildShopInfoCard(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -77,14 +84,14 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Shop Information',
+              AppStrings.shopInformation(isBengali),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.store, 'Name', widget.shop.name),
-            _buildInfoRow(Icons.location_on, 'Address', widget.shop.address),
+            _buildInfoRow(Icons.store, AppStrings.name(isBengali), widget.shop.name),
+            _buildInfoRow(Icons.location_on, AppStrings.address(isBengali), widget.shop.address),
             if (widget.shop.contact.isNotEmpty)
-              _buildInfoRow(Icons.phone, 'Contact', widget.shop.contact),
+              _buildInfoRow(Icons.phone, AppStrings.contact(isBengali), widget.shop.contact),
           ],
         ),
       ),
@@ -114,7 +121,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
     );
   }
 
-  Widget _buildDeliveryStatsCard() {
+  Widget _buildDeliveryStatsCard(bool isBengali) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -130,16 +137,16 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Delivery Summary',
+                  AppStrings.deliverySummary(isBengali),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatMetric('Total Deliveries', deliveries.length.toString()),
-                    _buildStatMetric('Total Sales', '৳${totalValue.toStringAsFixed(2)}'),
-                    _buildStatMetric('Pending', pendingCount.toString(), color: Colors.orange),
+                    _buildStatMetric(AppStrings.totalDeliveries(isBengali), deliveries.length.toString()),
+                    _buildStatMetric(AppStrings.totalSales(isBengali), '৳${totalValue.toStringAsFixed(2)}'),
+                    _buildStatMetric(AppStrings.pending(isBengali), pendingCount.toString(), color: Colors.orange),
                   ],
                 ),
               ],
@@ -160,7 +167,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
     );
   }
 
-  Widget _buildRecentDeliveries() {
+  Widget _buildRecentDeliveries(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -170,7 +177,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recent Deliveries',
+              AppStrings.recentDeliveries(isBengali),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -179,16 +186,16 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
                 final deliveries = deliveryProvider.deliveries.where((d) => d.shopId == widget.shop.id).take(5).toList();
 
                 if (deliveries.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No deliveries recorded for this shop yet.', style: TextStyle(color: Colors.grey)),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(AppStrings.noDeliveriesForShop(isBengali), style: const TextStyle(color: Colors.grey)),
                     ),
                   );
                 }
 
                 return Column(
-                  children: deliveries.map((d) => _buildDeliveryTile(context, d)).toList(),
+                  children: deliveries.map((d) => _buildDeliveryTile(context, d, isBengali)).toList(),
                 );
               },
             ),
@@ -198,21 +205,21 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
     );
   }
 
-  Widget _buildDeliveryTile(BuildContext context, Delivery delivery) {
+  Widget _buildDeliveryTile(BuildContext context, Delivery delivery, bool isBengali) {
     Color statusColor;
     String statusText;
     switch (delivery.status) {
       case DeliveryStatus.pending:
         statusColor = Colors.orange;
-        statusText = 'Pending';
+        statusText = AppStrings.pending(isBengali);
         break;
       case DeliveryStatus.completed:
         statusColor = Colors.green;
-        statusText = 'Completed';
+        statusText = AppStrings.completed(isBengali);
         break;
       case DeliveryStatus.cancelled:
         statusColor = Colors.red;
-        statusText = 'Cancelled';
+        statusText = AppStrings.cancelled(isBengali);
         break;
     }
 

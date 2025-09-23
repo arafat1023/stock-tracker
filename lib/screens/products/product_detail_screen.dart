@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../models/product.dart';
 import '../../models/stock_transaction.dart';
 import '../../providers/stock_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 import 'product_form_screen.dart';
 import 'stock_transaction_screen.dart';
 
@@ -27,18 +29,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.product.name),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: () => _navigateToEdit(context),
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit Product',
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.product.name),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                onPressed: () => _navigateToEdit(context),
+                icon: const Icon(Icons.edit),
+                tooltip: AppStrings.edit(isBengali),
+              ),
+            ],
           ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: SingleChildScrollView(
@@ -46,21 +51,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildStockCard(),
+              _buildStockCard(isBengali),
               const SizedBox(height: 16),
-              _buildProductInfoCard(),
+              _buildProductInfoCard(isBengali),
               const SizedBox(height: 16),
-              _buildRecentTransactions(),
+              _buildRecentTransactions(isBengali),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "product_detail_fab",
-        onPressed: () => _navigateToStockTransaction(context),
-        label: const Text('New Stock Entry'),
-        icon: const Icon(Icons.add_shopping_cart),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: "product_detail_fab",
+            onPressed: () => _navigateToStockTransaction(context),
+            label: Text(AppStrings.addStock(isBengali)),
+            icon: const Icon(Icons.add_shopping_cart),
+          ),
+        );
+      },
     );
   }
 
@@ -68,7 +75,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     await context.read<StockProvider>().loadTransactions(productId: widget.product.id);
   }
 
-  Widget _buildProductInfoCard() {
+  Widget _buildProductInfoCard(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -78,14 +85,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Product Details',
+              AppStrings.productDetails(isBengali),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.label, 'Unit', widget.product.unit),
-            _buildInfoRow(Icons.attach_money, 'Price', '৳${widget.product.price.toStringAsFixed(2)}'),
-            _buildInfoRow(Icons.calendar_today, 'Created On', DateFormat.yMMMd().format(widget.product.createdAt)),
-            _buildInfoRow(Icons.edit_calendar, 'Last Updated', DateFormat.yMMMd().format(widget.product.updatedAt)),
+            _buildInfoRow(Icons.label, AppStrings.unit(isBengali), widget.product.unit),
+            _buildInfoRow(Icons.attach_money, AppStrings.price(isBengali), '৳${widget.product.price.toStringAsFixed(2)}'),
+            _buildInfoRow(Icons.calendar_today, AppStrings.createdOn(isBengali), DateFormat.yMMMd().format(widget.product.createdAt)),
+            _buildInfoRow(Icons.edit_calendar, AppStrings.lastUpdated(isBengali), DateFormat.yMMMd().format(widget.product.updatedAt)),
           ],
         ),
       ),
@@ -107,7 +114,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildStockCard() {
+  Widget _buildStockCard(bool isBengali) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -126,28 +133,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             String statusText;
             if (stock > 10) {
               statusColor = Colors.green;
-              statusText = 'In Stock';
+              statusText = AppStrings.inStock(isBengali);
             } else if (stock > 0) {
               statusColor = Colors.orange;
-              statusText = 'Low Stock';
+              statusText = AppStrings.lowStock(isBengali);
             } else {
               statusColor = Colors.red;
-              statusText = 'Out of Stock';
+              statusText = AppStrings.outOfStock(isBengali);
             }
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Current Inventory',
+                  AppStrings.currentInventory(isBengali),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStockMetric('Quantity', '${stock.toStringAsFixed(1)} ${widget.product.unit}'),
-                    _buildStockMetric('Value', '৳${(stock * widget.product.price).toStringAsFixed(2)}'),
+                    _buildStockMetric(AppStrings.quantity(isBengali), '${stock.toStringAsFixed(1)} ${widget.product.unit}'),
+                    _buildStockMetric(AppStrings.value(isBengali), '৳${(stock * widget.product.price).toStringAsFixed(2)}'),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -188,7 +195,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Widget _buildRecentTransactions() {
+  Widget _buildRecentTransactions(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -198,7 +205,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recent Stock History',
+              AppStrings.recentStockHistory(isBengali),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -211,10 +218,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 final transactions = stockProvider.transactions.take(5).toList();
 
                 if (transactions.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No transactions recorded yet.', style: TextStyle(color: Colors.grey)),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(AppStrings.noTransactionsYet(isBengali), style: const TextStyle(color: Colors.grey)),
                     ),
                   );
                 }

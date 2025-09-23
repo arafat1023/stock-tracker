@@ -31,6 +31,11 @@ class AppStrings {
   static String lowStock(bool isBengali) => isBengali ? 'কম স্টক' : 'Low Stock';
   static String outOfStock(bool isBengali) => isBengali ? 'স্টক শেষ' : 'Out of Stock';
   static String inStock(bool isBengali) => isBengali ? 'স্টক আছে' : 'In Stock';
+  static String currentInventory(bool isBengali) => isBengali ? 'বর্তমান ইনভেন্টরি' : 'Current Inventory';
+  static String quantity(bool isBengali) => isBengali ? 'পরিমাণ' : 'Quantity';
+  static String value(bool isBengali) => isBengali ? 'মূল্য' : 'Value';
+  static String recentStockHistory(bool isBengali) => isBengali ? 'সাম্প্রতিক স্টক ইতিহাস' : 'Recent Stock History';
+  static String noTransactionsYet(bool isBengali) => isBengali ? 'এখনো কোন লেনদেন রেকর্ড হয়নি।' : 'No transactions recorded yet.';
 
   // Product Form Screen
   static String addNewProduct(bool isBengali) => isBengali ? 'নতুন পণ্য যোগ করুন' : 'Add New Product';
@@ -65,6 +70,14 @@ class AppStrings {
   static String pleaseEnterShopName(bool isBengali) => isBengali ? 'দয়া করে দোকানের নাম লিখুন' : 'Please enter shop name';
   static String pleaseEnterOwnerName(bool isBengali) => isBengali ? 'দয়া করে মালিকের নাম লিখুন' : 'Please enter owner name';
 
+  // Shop Detail Screen
+  static String shopInformation(bool isBengali) => isBengali ? 'দোকানের তথ্য' : 'Shop Information';
+  static String name(bool isBengali) => isBengali ? 'নাম' : 'Name';
+  static String deliverySummary(bool isBengali) => isBengali ? 'ডেলিভারি সারসংক্ষেপ' : 'Delivery Summary';
+  static String totalDeliveries(bool isBengali) => isBengali ? 'মোট ডেলিভারি' : 'Total Deliveries';
+  static String recentDeliveries(bool isBengali) => isBengali ? 'সাম্প্রতিক ডেলিভারি' : 'Recent Deliveries';
+  static String noDeliveriesForShop(bool isBengali) => isBengali ? 'এই দোকানের জন্য এখনো কোন ডেলিভারি রেকর্ড হয়নি।' : 'No deliveries recorded for this shop yet.';
+
   // Settings Screen
   static String settings(bool isBengali) => isBengali ? 'সেটিংস' : 'Settings';
   static String language(bool isBengali) => isBengali ? 'ভাষা' : 'Language';
@@ -81,7 +94,6 @@ class AppStrings {
   static String newDelivery(bool isBengali) => isBengali ? 'নতুন ডেলিভারি' : 'New Delivery';
   static String selectShop(bool isBengali) => isBengali ? 'দোকান নির্বাচন করুন' : 'Select Shop';
   static String selectProducts(bool isBengali) => isBengali ? 'পণ্য নির্বাচন করুন' : 'Select Products';
-  static String quantity(bool isBengali) => isBengali ? 'পরিমাণ' : 'Quantity';
   static String total(bool isBengali) => isBengali ? 'মোট' : 'Total';
   static String status(bool isBengali) => isBengali ? 'অবস্থা' : 'Status';
   static String completed(bool isBengali) => isBengali ? 'সম্পন্ন' : 'Completed';
@@ -122,6 +134,33 @@ class AppStrings {
   static String deliveryHistory(bool isBengali) => isBengali ? 'ডেলিভারি ইতিহাস' : 'Delivery History';
   static String lastUpdated(bool isBengali) => isBengali ? 'সর্বশেষ আপডেট' : 'Last Updated';
   static String createdOn(bool isBengali) => isBengali ? 'তৈরি হয়েছে' : 'Created On';
+
+  // Delivery Detail Screen
+  static String delivery(bool isBengali) => isBengali ? 'ডেলিভারি' : 'Delivery';
+  static String shop(bool isBengali) => isBengali ? 'দোকান' : 'Shop';
+  static String totalAmount(bool isBengali) => isBengali ? 'মোট পরিমাণ' : 'Total Amount';
+  static String notAvailable(bool isBengali) => isBengali ? 'উপলব্ধ নয়' : 'N/A';
+  static String items(bool isBengali) => isBengali ? 'আইটেম' : 'Items';
+  static String noItemsInDelivery(bool isBengali) => isBengali ? 'এই ডেলিভারিতে কোন আইটেম নেই।' : 'No items in this delivery.';
+  static String unknownProduct(bool isBengali) => isBengali ? 'অজানা পণ্য' : 'Unknown Product';
+  static String actions(bool isBengali) => isBengali ? 'কার্যক্রম' : 'Actions';
+  static String cancelDelivery(bool isBengali) => isBengali ? 'ডেলিভারি বাতিল করুন' : 'Cancel Delivery';
+  static String confirmAction(bool isBengali) => isBengali ? 'কার্যক্রম নিশ্চিত করুন' : 'Confirm Action';
+  static String confirmDeliveryStatusChange(bool isBengali, bool isComplete) => isBengali
+    ? 'আপনি কি নিশ্চিত যে এই ডেলিভারিটি ${isComplete ? 'সম্পন্ন' : 'বাতিল'} করতে চান?'
+    : 'Are you sure you want to ${isComplete ? 'complete' : 'cancel'} this delivery?';
+  static String no(bool isBengali) => isBengali ? 'না' : 'No';
+  static String yes(bool isBengali) => isBengali ? 'হ্যাঁ' : 'Yes';
+  static String deliveryStatusUpdated(bool isBengali, String status) => isBengali
+    ? 'ডেলিভারিটি $status হয়েছে।'
+    : 'Delivery has been $status.';
+  static String pdfOptions(bool isBengali) => isBengali ? 'পিডিএফ অপশন' : 'PDF Options';
+  static String pdfOptionsDescription(bool isBengali) => isBengali ? 'আপনি পিডিএফটি কিভাবে ব্যবহার করতে চান?' : 'How would you like to handle the PDF?';
+  static String download(bool isBengali) => isBengali ? 'ডাউনলোড' : 'Download';
+  static String pdfDownloadedTo(bool isBengali) => isBengali ? 'পিডিএফ ডাউনলোড হয়েছে' : 'PDF downloaded to';
+  static String pdfGeneratedAndReady(bool isBengali) => isBengali ? 'পিডিএফ তৈরি হয়েছে এবং শেয়ার করার জন্য প্রস্তুত।' : 'PDF generated and ready to share.';
+  static String errorGeneratingPDF(bool isBengali) => isBengali ? 'পিডিএফ তৈরিতে ত্রুটি' : 'Error generating PDF';
+  static String errorLoadingItems(bool isBengali) => isBengali ? 'আইটেম লোড করতে ত্রুটি' : 'Error loading items';
 
   // Form Labels
   static String quantityHint(bool isBengali) => isBengali ? 'পরিমাণ লিখুন' : 'Enter quantity';
