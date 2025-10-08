@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../providers/delivery_provider.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 import '../../widgets/searchable_shop_selector.dart';
 import '../../widgets/searchable_product_dialog.dart';
 import '../../services/database_service.dart';
@@ -43,11 +45,14 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create New Delivery'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.createDelivery(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
       body: Form(
         key: _formKey,
         child: Column(
@@ -68,6 +73,8 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 

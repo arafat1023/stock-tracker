@@ -6,6 +6,8 @@ import '../../services/backup_service.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/delivery_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 import 'package:file_picker/file_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -49,6 +51,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildLanguageSection(),
+                    const SizedBox(height: 24),
                     _buildBackupSection(),
                     const SizedBox(height: 24),
                     _buildDataManagementSection(),
@@ -58,6 +62,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildLanguageSection() {
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppStrings.language(isBengali),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.selectLanguage(isBengali),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    RadioListTile<bool>(
+                      title: Text(AppStrings.english(isBengali)),
+                      value: false,
+                      groupValue: isBengali,
+                      onChanged: (value) {
+                        if (value == false) {
+                          languageProvider.setEnglish();
+                        }
+                      },
+                    ),
+                    RadioListTile<bool>(
+                      title: Text(AppStrings.bengali(isBengali)),
+                      value: true,
+                      groupValue: isBengali,
+                      onChanged: (value) {
+                        if (value == true) {
+                          languageProvider.setBengali();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

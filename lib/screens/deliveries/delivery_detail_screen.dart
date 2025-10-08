@@ -7,6 +7,8 @@ import '../../models/product.dart';
 import '../../providers/delivery_provider.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/language_provider.dart';
+import '../../utils/app_strings.dart';
 import '../../services/pdf_service.dart';
 
 class DeliveryDetailScreen extends StatefulWidget {
@@ -43,7 +45,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading items: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${AppStrings.errorLoadingItems(context.read<LanguageProvider>().isBengali)}: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -51,55 +53,60 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Delivery #${widget.delivery.id}'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            onPressed: _generatePDF,
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'Generate PDF',
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('${AppStrings.delivery(isBengali)} #${widget.delivery.id}'),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                onPressed: () => _generatePDF(isBengali),
+                icon: const Icon(Icons.picture_as_pdf),
+                tooltip: AppStrings.generatePDF(isBengali),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadDeliveryItems,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDeliveryInfoCard(),
-                    const SizedBox(height: 16),
-                    _buildItemsCard(),
-                    const SizedBox(height: 16),
-                    if (widget.delivery.status == DeliveryStatus.pending)
-                      _buildActionsCard(),
-                  ],
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadDeliveryItems,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDeliveryInfoCard(isBengali),
+                      const SizedBox(height: 16),
+                      _buildItemsCard(isBengali),
+                      const SizedBox(height: 16),
+                      if (widget.delivery.status == DeliveryStatus.pending)
+                        _buildActionsCard(isBengali),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      );
+      },
     );
   }
 
-  Widget _buildDeliveryInfoCard() {
+  Widget _buildDeliveryInfoCard(bool isBengali) {
     Color statusColor;
     String statusText;
     switch (widget.delivery.status) {
       case DeliveryStatus.pending:
         statusColor = Colors.orange;
-        statusText = 'Pending';
+        statusText = AppStrings.pending(isBengali);
         break;
       case DeliveryStatus.completed:
         statusColor = Colors.green;
-        statusText = 'Completed';
+        statusText = AppStrings.completed(isBengali);
         break;
       case DeliveryStatus.cancelled:
         statusColor = Colors.red;
-        statusText = 'Cancelled';
+        statusText = AppStrings.cancelled(isBengali);
         break;
     }
 
@@ -118,7 +125,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Delivery Details',
+                    AppStrings.deliveryDetails(isBengali),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -136,11 +143,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               ],
             ),
             const Divider(height: 24),
-            _buildInfoRow(Icons.store, 'Shop', shop?.name ?? 'N/A'),
-            _buildInfoRow(Icons.calendar_today, 'Date', DateFormat.yMMMd().format(widget.delivery.deliveryDate)),
-            _buildInfoRow(Icons.attach_money, 'Total Amount', '৳${widget.delivery.totalAmount.toStringAsFixed(2)}'),
+            _buildInfoRow(Icons.store, AppStrings.shop(isBengali), shop?.name ?? AppStrings.notAvailable(isBengali)),
+            _buildInfoRow(Icons.calendar_today, AppStrings.date(isBengali), DateFormat.yMMMd().format(widget.delivery.deliveryDate)),
+            _buildInfoRow(Icons.attach_money, AppStrings.totalAmount(isBengali), '৳${widget.delivery.totalAmount.toStringAsFixed(2)}'),
             if (widget.delivery.notes.isNotEmpty)
-              _buildInfoRow(Icons.notes, 'Notes', widget.delivery.notes),
+              _buildInfoRow(Icons.notes, AppStrings.notes(isBengali), widget.delivery.notes),
           ],
         ),
       ),
@@ -170,7 +177,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
   }
 
-  Widget _buildItemsCard() {
+  Widget _buildItemsCard(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -179,10 +186,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Items (${_deliveryItems.length})', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text('${AppStrings.items(isBengali)} (${_deliveryItems.length})', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             if (_deliveryItems.isEmpty)
-              const Center(child: Text('No items in this delivery.', style: TextStyle(color: Colors.grey)))
+              Center(child: Text(AppStrings.noItemsInDelivery(isBengali), style: const TextStyle(color: Colors.grey)))
             else
               ListView.separated(
                 shrinkWrap: true,
@@ -190,7 +197,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 itemCount: _deliveryItems.length,
                 separatorBuilder: (context, index) => const Divider(),
                 itemBuilder: (context, index) {
-                  return _buildItemTile(_deliveryItems[index]);
+                  return _buildItemTile(_deliveryItems[index], isBengali);
                 },
               ),
           ],
@@ -199,16 +206,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
   }
 
-  Widget _buildItemTile(DeliveryItem item) {
+  Widget _buildItemTile(DeliveryItem item, bool isBengali) {
     final product = context.watch<ProductProvider>().getProductById(item.productId);
     return ListTile(
-      title: Text(product?.name ?? 'Unknown Product', style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(product?.name ?? AppStrings.unknownProduct(isBengali), style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text('${item.quantity.toStringAsFixed(1)} ${product?.unit ?? ''} x ৳${item.unitPrice.toStringAsFixed(2)}'),
       trailing: Text('৳${item.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 
-  Widget _buildActionsCard() {
+  Widget _buildActionsCard(bool isBengali) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -217,16 +224,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Actions', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text(AppStrings.actions(isBengali), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Column(
               children: [
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.completed),
+                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.completed, isBengali),
                     icon: const Icon(Icons.check_circle, color: Colors.white),
-                    label: const Text('Mark as Completed'),
+                    label: Text(AppStrings.markAsCompleted(isBengali)),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   ),
                 ),
@@ -234,9 +241,9 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.cancelled),
+                    onPressed: () => _updateDeliveryStatus(DeliveryStatus.cancelled, isBengali),
                     icon: const Icon(Icons.cancel, color: Colors.white),
-                    label: const Text('Cancel Delivery'),
+                    label: Text(AppStrings.cancelDelivery(isBengali)),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                   ),
                 ),
@@ -248,15 +255,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
   }
 
-  void _updateDeliveryStatus(DeliveryStatus status) async {
+  void _updateDeliveryStatus(DeliveryStatus status, bool isBengali) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Action'),
-        content: Text('Are you sure you want to ${status == DeliveryStatus.completed ? 'complete' : 'cancel'} this delivery?'),
+        title: Text(AppStrings.confirmAction(isBengali)),
+        content: Text(AppStrings.confirmDeliveryStatusChange(isBengali, status == DeliveryStatus.completed)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: status == DeliveryStatus.completed ? Colors.green : Colors.red), child: const Text('Yes')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppStrings.no(isBengali))),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: status == DeliveryStatus.completed ? Colors.green : Colors.red), child: Text(AppStrings.yes(isBengali))),
         ],
       ),
     );
@@ -271,39 +278,39 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         if (!mounted) return;
 
         messenger.showSnackBar(
-          SnackBar(content: Text('Delivery has been ${status.name}.'), backgroundColor: Colors.green),
+          SnackBar(content: Text(AppStrings.deliveryStatusUpdated(isBengali, status.name)), backgroundColor: Colors.green),
         );
         navigator.pop(true); // Return true to indicate success
       } catch (e) {
         if (!mounted) return;
 
         messenger.showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${AppStrings.error(isBengali)}: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  void _generatePDF() async {
+  void _generatePDF(bool isBengali) async {
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('PDF Options'),
-        content: const Text('How would you like to handle the PDF?'),
+        title: Text(AppStrings.pdfOptions(isBengali)),
+        content: Text(AppStrings.pdfOptionsDescription(isBengali)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, 'cancel'),
-            child: const Text('Cancel'),
+            child: Text(AppStrings.cancel(isBengali)),
           ),
           TextButton.icon(
             onPressed: () => Navigator.pop(context, 'download'),
             icon: const Icon(Icons.download),
-            label: const Text('Download'),
+            label: Text(AppStrings.download(isBengali)),
           ),
           TextButton.icon(
             onPressed: () => Navigator.pop(context, 'share'),
             icon: const Icon(Icons.share),
-            label: const Text('Share'),
+            label: Text(AppStrings.share(isBengali)),
           ),
         ],
       ),
@@ -341,19 +348,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       if (action == 'download' && filePath != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('PDF downloaded to: $filePath'),
+            content: Text('${AppStrings.pdfDownloadedTo(isBengali)}: $filePath'),
             duration: const Duration(seconds: 4),
           ),
         );
       } else if (action == 'share') {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF generated and ready to share.')),
+          SnackBar(content: Text(AppStrings.pdfGeneratedAndReady(isBengali))),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${AppStrings.errorGeneratingPDF(isBengali)}: $e'), backgroundColor: Colors.red),
         );
     }
   }

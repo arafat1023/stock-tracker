@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 import '../../providers/delivery_provider.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../models/delivery.dart';
 import '../../models/product.dart';
 import '../../services/pdf_service.dart';
+import '../../utils/app_strings.dart';
 import 'delivery_form_screen.dart';
 import 'delivery_detail_screen.dart';
 
@@ -33,18 +35,21 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Deliveries'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterOptions,
-            tooltip: 'Filter Deliveries',
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        final isBengali = languageProvider.isBengali;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.deliveryList(isBengali)),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                onPressed: _showFilterOptions,
+                tooltip: AppStrings.filter(isBengali),
+              ),
+            ],
           ),
-        ],
-      ),
       body: Column(
         children: [
           _buildFilterChips(),
@@ -58,7 +63,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                 final filteredDeliveries = _applyFilters(deliveryProvider.deliveries);
 
                 if (filteredDeliveries.isEmpty) {
-                  return _buildEmptyState(context);
+                  return _buildEmptyState(context, isBengali);
                 }
 
                 return ListView.builder(
@@ -66,7 +71,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
                   itemCount: filteredDeliveries.length,
                   itemBuilder: (context, index) {
                     final delivery = filteredDeliveries[index];
-                    return DeliveryCard(delivery: delivery);
+                    return DeliveryCard(delivery: delivery, isBengali: isBengali);
                   },
                 );
               },
@@ -74,16 +79,18 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "deliveries_fab",
-        onPressed: () => _navigateToCreateDelivery(context),
-        label: const Text('New Delivery'),
-        icon: const Icon(Icons.add),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: "deliveries_fab",
+            onPressed: () => _navigateToCreateDelivery(context),
+            label: Text(AppStrings.newDelivery(isBengali)),
+            icon: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, bool isBengali) {
     bool isFiltered = _filterStatus != null || _filterShopId != null;
     return Center(
       child: Column(
@@ -96,14 +103,14 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            isFiltered ? 'No Deliveries Found' : 'No Deliveries Yet',
+            isFiltered ? AppStrings.noDeliveriesFound(isBengali) : AppStrings.createFirstDelivery(isBengali),
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             isFiltered
-                ? 'No deliveries match your current filters.'
-                : 'Tap the "New Delivery" button to get started.',
+                ? AppStrings.noDeliveriesFound(isBengali)
+                : AppStrings.createFirstDelivery(isBengali),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
@@ -112,7 +119,7 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
               padding: const EdgeInsets.only(top: 16.0),
               child: ElevatedButton(
                 onPressed: _clearFilters,
-                child: const Text('Clear Filters'),
+                child: Text(AppStrings.clear(isBengali)),
               ),
             ),
         ],
@@ -230,8 +237,9 @@ class _DeliveryListScreenState extends State<DeliveryListScreen> {
 
 class DeliveryCard extends StatelessWidget {
   final Delivery delivery;
+  final bool isBengali;
 
-  const DeliveryCard({super.key, required this.delivery});
+  const DeliveryCard({super.key, required this.delivery, required this.isBengali});
 
   @override
   Widget build(BuildContext context) {
@@ -243,15 +251,15 @@ class DeliveryCard extends StatelessWidget {
     switch (delivery.status) {
       case DeliveryStatus.pending:
         statusColor = Colors.orange;
-        statusText = 'Pending';
+        statusText = AppStrings.pending(isBengali);
         break;
       case DeliveryStatus.completed:
         statusColor = Colors.green;
-        statusText = 'Completed';
+        statusText = AppStrings.completed(isBengali);
         break;
       case DeliveryStatus.cancelled:
         statusColor = Colors.red;
-        statusText = 'Cancelled';
+        statusText = AppStrings.cancelled(isBengali);
         break;
     }
 
@@ -317,7 +325,7 @@ class DeliveryCard extends StatelessWidget {
                       if (delivery.status == DeliveryStatus.pending)
                         TextButton.icon(
                           icon: const Icon(Icons.check_circle, color: Colors.green),
-                          label: const Text('Complete', style: TextStyle(color: Colors.green)),
+                          label: Text(AppStrings.completed(isBengali), style: const TextStyle(color: Colors.green)),
                           onPressed: () => _updateDeliveryStatus(context, delivery, DeliveryStatus.completed),
                         ),
                       IconButton(
