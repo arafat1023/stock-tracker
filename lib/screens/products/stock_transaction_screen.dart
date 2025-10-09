@@ -204,6 +204,10 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
   void _saveTransaction() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Capture context-dependent objects before async gap
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       final quantity = double.parse(_quantityController.text);
       final reference = _referenceController.text.trim().isEmpty ? 'Manual ${_selectedType.name}' : _referenceController.text.trim();
@@ -216,14 +220,14 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop(true);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('Stock updated successfully.'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }

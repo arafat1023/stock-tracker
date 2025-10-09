@@ -105,7 +105,7 @@ class ReportService {
         totalDeliveries: totalDeliveries,
         completedDeliveries: completedDeliveries,
         totalRevenue: totalRevenue,
-        averageOrderValue: totalDeliveries > 0 ? totalRevenue / completedDeliveries : 0.0,
+        averageOrderValue: completedDeliveries > 0 ? totalRevenue / completedDeliveries : 0.0,
       ));
     }
 

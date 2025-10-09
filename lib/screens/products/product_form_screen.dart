@@ -110,7 +110,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         return AppStrings.pleaseEnterValidPrice(isBengali);
                       }
                       final price = double.tryParse(value);
-                      if (price == null || price < 0) {
+                      if (price == null || price <= 0) {
                         return AppStrings.pleaseEnterValidPrice(isBengali);
                       }
                       return null;
@@ -150,6 +150,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       return;
     }
 
+    // Capture context-dependent objects before async gap
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       final now = DateTime.now();
       final product = Product(
@@ -169,8 +173,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
 
       if (mounted) {
-        Navigator.pop(context, true); // Return true to indicate success
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop(true); // Return true to indicate success
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Product ${isEditing ? 'updated' : 'added'} successfully.'),
             backgroundColor: Colors.green,
@@ -179,7 +183,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Error saving product: $e'),
             backgroundColor: Colors.red,

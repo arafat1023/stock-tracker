@@ -13,7 +13,9 @@ class Product {
     required this.price,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : assert(name.isNotEmpty, 'Product name cannot be empty'),
+       assert(unit.isNotEmpty, 'Unit cannot be empty'),
+       assert(price > 0, 'Price must be positive');
 
   Map<String, dynamic> toMap() {
     return {
@@ -27,11 +29,26 @@ class Product {
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
+    // Validate required fields
+    final name = map['name'] as String?;
+    final unit = map['unit'] as String?;
+    final price = map['price']?.toDouble();
+
+    if (name == null || name.isEmpty) {
+      throw ArgumentError('Product name cannot be null or empty');
+    }
+    if (unit == null || unit.isEmpty) {
+      throw ArgumentError('Product unit cannot be null or empty');
+    }
+    if (price == null || price <= 0) {
+      throw ArgumentError('Product price must be positive, got: $price');
+    }
+
     return Product(
       id: map['id']?.toInt(),
-      name: map['name'] ?? '',
-      unit: map['unit'] ?? '',
-      price: map['price']?.toDouble() ?? 0.0,
+      name: name,
+      unit: unit,
+      price: price,
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),
     );

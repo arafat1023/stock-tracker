@@ -34,6 +34,21 @@ class StockProvider with ChangeNotifier {
     DateTime? date,
   }) async {
     try {
+      // Validate that operation won't result in negative stock
+      double quantityChange = 0;
+      if (type == StockTransactionType.stockIn) {
+        quantityChange = quantity;
+      } else if (type == StockTransactionType.stockOut) {
+        quantityChange = -quantity;
+      } else if (type == StockTransactionType.adjustment) {
+        quantityChange = quantity; // adjustment can be positive or negative
+      }
+
+      final error = await _databaseService.validateStockOperation(productId, quantityChange);
+      if (error != null) {
+        throw Exception(error);
+      }
+
       final transaction = StockTransaction(
         productId: productId,
         type: type,

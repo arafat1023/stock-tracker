@@ -25,6 +25,7 @@ class _StockReportScreenState extends State<StockReportScreen> {
 
   Future<void> _loadStockReport() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final items = await _reportService.getStockBalanceReport();
       setState(() {
@@ -35,7 +36,7 @@ class _StockReportScreenState extends State<StockReportScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error loading stock report: $e')),
         );
       }

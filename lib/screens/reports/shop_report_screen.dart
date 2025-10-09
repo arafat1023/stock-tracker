@@ -28,6 +28,7 @@ class _ShopReportScreenState extends State<ShopReportScreen> {
 
   Future<void> _loadShopReport() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final items = await _reportService.getShopPerformanceReport(
         startDate: _startDate,
@@ -41,7 +42,7 @@ class _ShopReportScreenState extends State<ShopReportScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error loading shop report: $e')),
         );
       }

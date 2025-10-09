@@ -346,13 +346,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _createBackup() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       await _backupService.createBackup();
       setState(() => _isLoading = false);
       await _loadBackupFiles();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Backup created successfully'),
             action: SnackBarAction(
@@ -365,7 +366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error creating backup: $e')),
         );
       }
@@ -374,13 +375,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _shareBackup() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       await _backupService.shareBackup();
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error sharing backup: $e')),
         );
       }
@@ -388,6 +390,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _restoreFromFile() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -399,7 +402,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error selecting file: $e')),
         );
       }
@@ -407,6 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _restoreBackup(String filePath) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -434,14 +438,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => _isLoading = false);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('Backup restored successfully')),
           );
         }
       } catch (e) {
         setState(() => _isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(content: Text('Error restoring backup: $e')),
           );
         }
@@ -450,6 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deleteBackup(String filePath) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -475,13 +480,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _loadBackupFiles();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('Backup deleted successfully')),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(content: Text('Error deleting backup: $e')),
           );
         }
@@ -490,6 +495,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showClearDataDialog() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -527,17 +534,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await _loadBackupFiles(); // Refresh backup files list
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('All data cleared successfully')),
           );
 
           // Pop back to home screen and ensure dashboard refreshes
-          Navigator.of(context).popUntil((route) => route.isFirst);
+          navigator.popUntil((route) => route.isFirst);
         }
       } catch (e) {
         setState(() => _isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(content: Text('Error clearing data: $e')),
           );
         }
@@ -547,6 +554,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _showDatabaseStats() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final backupService = BackupService();
       final backupData = await backupService.gatherAllData();
@@ -591,7 +599,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error loading statistics: $e')),
         );
       }

@@ -13,7 +13,8 @@ class Shop {
     required this.contact,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : assert(name.isNotEmpty, 'Shop name cannot be empty'),
+       assert(address.isNotEmpty, 'Shop address cannot be empty');
 
   Map<String, dynamic> toMap() {
     return {
@@ -27,10 +28,21 @@ class Shop {
   }
 
   factory Shop.fromMap(Map<String, dynamic> map) {
+    // Validate required fields
+    final name = map['name'] as String?;
+    final address = map['address'] as String?;
+
+    if (name == null || name.isEmpty) {
+      throw ArgumentError('Shop name cannot be null or empty');
+    }
+    if (address == null || address.isEmpty) {
+      throw ArgumentError('Shop address cannot be null or empty');
+    }
+
     return Shop(
       id: map['id']?.toInt(),
-      name: map['name'] ?? '',
-      address: map['address'] ?? '',
+      name: name,
+      address: address,
       contact: map['contact'] ?? '',
       createdAt: DateTime.parse(map['created_at']),
       updatedAt: DateTime.parse(map['updated_at']),

@@ -292,17 +292,20 @@ class ProductCard extends StatelessWidget {
   }
 
   void _deleteProduct(BuildContext context, Product product) async {
+    // Capture context-dependent objects before async gap
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       await context.read<ProductProvider>().deleteProduct(product.id!);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('"${product.name}" was deleted.')),
         );
         context.read<ProductProvider>().loadProducts();
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error deleting product: $e'), backgroundColor: Colors.red),
         );
       }

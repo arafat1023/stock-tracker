@@ -29,6 +29,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _loadDashboardMetrics() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final metrics = await _reportService.getDashboardMetrics();
       setState(() {
@@ -38,7 +39,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error loading dashboard: $e')),
         );
       }
@@ -359,6 +360,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _exportStockReport() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final stockItems = await _reportService.getStockBalanceReport();
       final products = stockItems.map((item) => item.product).toList();
@@ -374,13 +376,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('Stock report exported successfully')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error exporting stock report: $e')),
         );
       }
@@ -388,6 +390,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _exportCSVData() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -439,7 +442,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       setState(() => _isLoading = false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('CSV exported successfully and ready to share!'),
             duration: const Duration(seconds: 3),
@@ -449,7 +452,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error exporting CSV: $e')),
         );
       }
@@ -457,6 +460,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _exportSummaryReport() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -495,14 +499,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       if (mounted) {
         if (action == 'download' && filePath != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text('PDF downloaded to: $filePath'),
               duration: const Duration(seconds: 4),
             ),
           );
         } else if (action == 'share') {
-          ScaffoldMessenger.of(context).showSnackBar(
+          scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('PDF generated and ready to share!')),
           );
         }
@@ -510,7 +514,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error generating PDF: $e')),
         );
       }

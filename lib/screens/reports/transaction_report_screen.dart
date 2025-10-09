@@ -24,6 +24,7 @@ class _TransactionReportScreenState extends State<TransactionReportScreen> {
 
   Future<void> _loadTransactions() async {
     setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final transactions = await _getTransactionRecords();
       setState(() {
@@ -33,7 +34,7 @@ class _TransactionReportScreenState extends State<TransactionReportScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Error loading transactions: $e')),
         );
       }

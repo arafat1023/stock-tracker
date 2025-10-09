@@ -141,6 +141,10 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
       return;
     }
 
+    // Capture context-dependent objects before async gap
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       final now = DateTime.now();
       final shop = Shop(
@@ -160,8 +164,8 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
       }
 
       if (mounted) {
-        Navigator.pop(context, true); // Return true to indicate success
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop(true); // Return true to indicate success
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Shop ${isEditing ? 'updated' : 'added'} successfully.'),
             backgroundColor: Colors.green,
@@ -170,7 +174,7 @@ class _ShopFormScreenState extends State<ShopFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Error saving shop: $e'),
             backgroundColor: Colors.red,

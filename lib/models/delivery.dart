@@ -15,7 +15,8 @@ class Delivery {
     required this.totalAmount,
     required this.status,
     required this.notes,
-  });
+  }) : assert(shopId > 0, 'Shop ID must be positive'),
+       assert(totalAmount >= 0, 'Total amount cannot be negative');
 
   Map<String, dynamic> toMap() {
     return {
@@ -29,11 +30,22 @@ class Delivery {
   }
 
   factory Delivery.fromMap(Map<String, dynamic> map) {
+    // Validate required fields
+    final shopId = map['shop_id']?.toInt();
+    final totalAmount = map['total_amount']?.toDouble();
+
+    if (shopId == null || shopId <= 0) {
+      throw ArgumentError('Delivery shopId must be positive, got: $shopId');
+    }
+    if (totalAmount == null || totalAmount < 0) {
+      throw ArgumentError('Delivery totalAmount cannot be negative, got: $totalAmount');
+    }
+
     return Delivery(
       id: map['id']?.toInt(),
-      shopId: map['shop_id']?.toInt() ?? 0,
+      shopId: shopId,
       deliveryDate: DateTime.parse(map['delivery_date']),
-      totalAmount: map['total_amount']?.toDouble() ?? 0.0,
+      totalAmount: totalAmount,
       status: DeliveryStatus.values.firstWhere(
         (e) => e.name == map['status'],
         orElse: () => DeliveryStatus.pending,
