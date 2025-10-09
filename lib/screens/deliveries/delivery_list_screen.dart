@@ -352,6 +352,10 @@ class DeliveryCard extends StatelessWidget {
   }
 
   void _updateDeliveryStatus(BuildContext context, Delivery delivery, DeliveryStatus status) async {
+    // Capture context-dependent references before async gaps
+    final deliveryProvider = context.read<DeliveryProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -369,16 +373,16 @@ class DeliveryCard extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       try {
-        await context.read<DeliveryProvider>().updateDeliveryStatus(delivery.id!, status);
+        await deliveryProvider.updateDeliveryStatus(delivery.id!, status);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('Delivery marked as ${status.name}.')),
           );
-          context.read<DeliveryProvider>().loadDeliveries();
+          deliveryProvider.loadDeliveries();
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }

@@ -32,6 +32,7 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
   DateTime _selectedDate = DateTime.now();
   final List<DeliveryItemForm> _deliveryItems = [];
   final Map<int, double> _availableStock = {};
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -218,6 +219,7 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
                     errorText: isOverStock ? 'Exceeds available stock' : null,
                   ),
                   keyboardType: TextInputType.number,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Required';
                     final qty = double.tryParse(v);
@@ -225,10 +227,7 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
                     if (qty > availableStock) return 'Exceeds stock (${availableStock.toStringAsFixed(1)})';
                     return null;
                   },
-                  onChanged: (_) {
-                    _calculateItemTotal(item);
-                    setState(() {}); // Refresh validation
-                  },
+                  onChanged: (_) => _calculateItemTotal(item),
                 ),
               ),
               const SizedBox(width: 8),
@@ -238,7 +237,7 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
                   controller: item.priceController,
                   decoration: const InputDecoration(labelText: 'Unit Price', prefixText: '৳', border: OutlineInputBorder()),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => (v == null || v.isEmpty || double.tryParse(v) == null || double.parse(v) < 0) ? 'Invalid' : null,
+                  validator: (v) => (v == null || v.isEmpty || double.tryParse(v) == null || double.parse(v) <= 0) ? 'Invalid' : null,
                   onChanged: (_) => _calculateItemTotal(item),
                 ),
               ),
@@ -256,7 +255,7 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
 
   Widget _buildBottomBar() {
     double totalAmount = _deliveryItems.fold(0.0, (sum, item) => sum + item.totalPrice);
-    bool canSave = _selectedShop != null && _deliveryItems.isNotEmpty && _formKey.currentState?.validate() == true;
+    bool canSave = !_isSubmitting && _selectedShop != null && _deliveryItems.isNotEmpty && _formKey.currentState?.validate() == true;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -306,11 +305,25 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
 
   void _addProductToDelivery(Product product) async {
     final stock = await _databaseService.getAvailableStock(product.id!);
+    if (!mounted) return;
+
+    // Don't allow adding products with zero stock
+    if (stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot add "${product.name}" - No stock available (current stock: ${stock.toStringAsFixed(1)} ${product.unit})'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _availableStock[product.id!] = stock;
       _deliveryItems.add(DeliveryItemForm(
         product: product,
-        quantityController: TextEditingController(text: stock > 0 ? '1' : '0'),
+        quantityController: TextEditingController(text: '1'),
         priceController: TextEditingController(text: product.price.toString()),
       ));
       _calculateItemTotal(_deliveryItems.last);
@@ -332,20 +345,29 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
   }
 
   void _createDelivery() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate() || _isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    // Capture context-dependent references before async gaps
+    final deliveryProvider = context.read<DeliveryProvider>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final items = _deliveryItems.map((item) {
+        final quantity = double.parse(item.quantityController.text);
+        final unitPrice = double.parse(item.priceController.text);
         return DeliveryItem(
           deliveryId: 0,
           productId: item.product!.id!,
-          quantity: double.parse(item.quantityController.text),
-          unitPrice: double.parse(item.priceController.text),
-          totalPrice: item.totalPrice,
+          quantity: quantity,
+          unitPrice: unitPrice,
+          totalPrice: quantity * unitPrice, // Calculate fresh from current values
         );
       }).toList();
 
-      await context.read<DeliveryProvider>().createDelivery(
+      await deliveryProvider.createDelivery(
         shopId: _selectedShop!.id!,
         deliveryDate: _selectedDate,
         items: items,
@@ -353,12 +375,13 @@ class _DeliveryFormScreenState extends State<DeliveryFormScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Delivery created successfully.'), backgroundColor: Colors.green));
+        navigator.pop(true);
+        messenger.showSnackBar(const SnackBar(content: Text('Delivery created successfully.'), backgroundColor: Colors.green));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        setState(() => _isSubmitting = false);
+        messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }

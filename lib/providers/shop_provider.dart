@@ -58,6 +58,12 @@ class ShopProvider with ChangeNotifier {
 
   Future<void> deleteShop(int id) async {
     try {
+      // Check if shop can be deleted (no dependencies)
+      final canDelete = await _databaseService.canDeleteShop(id);
+      if (!canDelete) {
+        throw Exception('Cannot delete shop: It has associated deliveries or returns. Please remove these records first.');
+      }
+
       await _databaseService.deleteShop(id);
       _shops.removeWhere((shop) => shop.id == id);
       _applySearch();

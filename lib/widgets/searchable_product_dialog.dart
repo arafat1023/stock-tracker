@@ -35,6 +35,8 @@ class _SearchableProductDialogState extends State<SearchableProductDialog> {
   Future<void> _loadStockLevels() async {
     final productIds = widget.products.map((p) => p.id!).toList();
     final stockLevels = await _databaseService.getAvailableStockForProducts(productIds);
+    if (!mounted) return;
+
     setState(() {
       _stockLevels = stockLevels;
       _loadingStock = false;

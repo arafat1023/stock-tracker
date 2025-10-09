@@ -58,6 +58,12 @@ class ProductProvider with ChangeNotifier {
 
   Future<void> deleteProduct(int id) async {
     try {
+      // Check if product can be deleted (no dependencies)
+      final canDelete = await _databaseService.canDeleteProduct(id);
+      if (!canDelete) {
+        throw Exception('Cannot delete product: It has stock transactions, deliveries, or returns. Please remove these records first.');
+      }
+
       await _databaseService.deleteProduct(id);
       _products.removeWhere((product) => product.id == id);
       _applySearch();

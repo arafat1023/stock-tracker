@@ -29,6 +29,10 @@ class DatabaseService {
       path,
       version: 1,
       onCreate: _createTables,
+      onOpen: (db) async {
+        // Enable foreign key constraints
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
     );
   }
 
@@ -148,6 +152,27 @@ class DatabaseService {
     );
   }
 
+  Future<bool> canDeleteProduct(int id) async {
+    final db = await database;
+
+    // Check if product has stock transactions
+    final transactionCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM stock_transactions WHERE product_id = ?', [id])
+    ) ?? 0;
+
+    // Check if product is in any delivery items
+    final deliveryItemCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM delivery_items WHERE product_id = ?', [id])
+    ) ?? 0;
+
+    // Check if product is in any returns
+    final returnCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM returns WHERE product_id = ?', [id])
+    ) ?? 0;
+
+    return transactionCount == 0 && deliveryItemCount == 0 && returnCount == 0;
+  }
+
   Future<int> deleteProduct(int id) async {
     final db = await database;
     return await db.delete('products', where: 'id = ?', whereArgs: [id]);
@@ -195,15 +220,31 @@ class DatabaseService {
     );
   }
 
+  Future<bool> canDeleteShop(int id) async {
+    final db = await database;
+
+    // Check if shop has deliveries
+    final deliveryCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM deliveries WHERE shop_id = ?', [id])
+    ) ?? 0;
+
+    // Check if shop has returns
+    final returnCount = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM returns WHERE shop_id = ?', [id])
+    ) ?? 0;
+
+    return deliveryCount == 0 && returnCount == 0;
+  }
+
   Future<int> deleteShop(int id) async {
     final db = await database;
     return await db.delete('shops', where: 'id = ?', whereArgs: [id]);
   }
 
   // Stock Transaction Operations
-  Future<int> insertStockTransaction(StockTransaction transaction) async {
-    final db = await database;
-    return await db.insert('stock_transactions', transaction.toMap());
+  Future<int> insertStockTransaction(StockTransaction transaction, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    return await executor.insert('stock_transactions', transaction.toMap());
   }
 
   Future<List<StockTransaction>> getStockTransactions({int? productId}) async {
@@ -239,33 +280,62 @@ class DatabaseService {
   }
 
   Future<double> getAvailableStock(int productId) async {
-    final stockBalance = await getProductStockBalance(productId);
+    // Stock is already deducted when deliveries are created (via stockOut transactions)
+    // So available stock is simply the stock balance
+    return await getProductStockBalance(productId);
+  }
 
-    // Subtract pending delivery quantities
-    final db = await database;
-    final result = await db.rawQuery('''
-      SELECT SUM(di.quantity) as pending_deliveries
-      FROM delivery_items di
-      JOIN deliveries d ON di.delivery_id = d.id
-      WHERE di.product_id = ? AND d.status = 'pending'
-    ''', [productId]);
+  /// Validates that a stock operation won't result in negative stock
+  /// Returns error message if invalid, null if valid
+  Future<String?> validateStockOperation(int productId, double quantityChange) async {
+    final currentBalance = await getProductStockBalance(productId);
+    final newBalance = currentBalance + quantityChange; // quantityChange is negative for stockOut
 
-    final pendingDeliveries = result.first['pending_deliveries'] as double? ?? 0.0;
-    return stockBalance - pendingDeliveries;
+    if (newBalance < 0) {
+      return 'Insufficient stock: Current balance is ${currentBalance.toStringAsFixed(1)}, cannot deduct ${(-quantityChange).toStringAsFixed(1)}. Would result in negative stock (${newBalance.toStringAsFixed(1)}).';
+    }
+
+    return null;
   }
 
   Future<Map<int, double>> getAvailableStockForProducts(List<int> productIds) async {
+    if (productIds.isEmpty) return {};
+
+    final db = await database;
+    final placeholders = List.filled(productIds.length, '?').join(',');
+
+    final result = await db.rawQuery('''
+      SELECT
+        product_id,
+        SUM(CASE WHEN type = 'stockIn' THEN quantity ELSE 0 END) -
+        SUM(CASE WHEN type = 'stockOut' THEN quantity ELSE 0 END) +
+        SUM(CASE WHEN type = 'adjustment' THEN quantity ELSE 0 END) as balance
+      FROM stock_transactions
+      WHERE product_id IN ($placeholders)
+      GROUP BY product_id
+    ''', productIds);
+
     final Map<int, double> stockMap = {};
+
+    // Initialize all products with 0 balance
     for (final productId in productIds) {
-      stockMap[productId] = await getAvailableStock(productId);
+      stockMap[productId] = 0.0;
     }
+
+    // Update with actual balances from query
+    for (final row in result) {
+      final productId = row['product_id'] as int;
+      final balance = row['balance'] as double? ?? 0.0;
+      stockMap[productId] = balance;
+    }
+
     return stockMap;
   }
 
   // Delivery Operations
-  Future<int> insertDelivery(Delivery delivery) async {
-    final db = await database;
-    return await db.insert('deliveries', delivery.toMap());
+  Future<int> insertDelivery(Delivery delivery, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    return await executor.insert('deliveries', delivery.toMap());
   }
 
   Future<List<Delivery>> getDeliveries({int? shopId}) async {
@@ -286,9 +356,9 @@ class DatabaseService {
     return List.generate(maps.length, (i) => Delivery.fromMap(maps[i]));
   }
 
-  Future<int> updateDelivery(Delivery delivery) async {
-    final db = await database;
-    return await db.update(
+  Future<int> updateDelivery(Delivery delivery, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    return await executor.update(
       'deliveries',
       delivery.toMap(),
       where: 'id = ?',
@@ -297,19 +367,28 @@ class DatabaseService {
   }
 
   // Delivery Item Operations
-  Future<int> insertDeliveryItem(DeliveryItem item) async {
-    final db = await database;
-    return await db.insert('delivery_items', item.toMap());
+  Future<int> insertDeliveryItem(DeliveryItem item, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    return await executor.insert('delivery_items', item.toMap());
   }
 
-  Future<List<DeliveryItem>> getDeliveryItems(int deliveryId) async {
-    final db = await database;
-    final maps = await db.query(
+  Future<List<DeliveryItem>> getDeliveryItems(int deliveryId, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    final maps = await executor.query(
       'delivery_items',
       where: 'delivery_id = ?',
       whereArgs: [deliveryId],
     );
     return List.generate(maps.length, (i) => DeliveryItem.fromMap(maps[i]));
+  }
+
+  Future<int> deleteDeliveryItems(int deliveryId, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    return await executor.delete(
+      'delivery_items',
+      where: 'delivery_id = ?',
+      whereArgs: [deliveryId],
+    );
   }
 
   // Return Operations

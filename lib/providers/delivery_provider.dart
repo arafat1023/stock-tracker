@@ -43,21 +43,34 @@ class DeliveryProvider with ChangeNotifier {
         notes: notes,
       );
 
-      final deliveryId = await _databaseService.insertDelivery(delivery);
+      final db = await _databaseService.database;
+      late int deliveryId;
 
-      for (final item in items) {
-        final deliveryItem = item.copyWith(deliveryId: deliveryId);
-        await _databaseService.insertDeliveryItem(deliveryItem);
+      await db.transaction((txn) async {
+        // Validate stock availability before creating delivery
+        for (final item in items) {
+          final error = await _databaseService.validateStockOperation(item.productId, -item.quantity);
+          if (error != null) {
+            throw Exception('Cannot create delivery: $error');
+          }
+        }
 
-        final stockTransaction = StockTransaction(
-          productId: item.productId,
-          type: StockTransactionType.stockOut,
-          quantity: item.quantity,
-          reference: 'Delivery #$deliveryId',
-          date: deliveryDate,
-        );
-        await _databaseService.insertStockTransaction(stockTransaction);
-      }
+        deliveryId = await _databaseService.insertDelivery(delivery, db: txn);
+
+        for (final item in items) {
+          final deliveryItem = item.copyWith(deliveryId: deliveryId);
+          await _databaseService.insertDeliveryItem(deliveryItem, db: txn);
+
+          final stockTransaction = StockTransaction(
+            productId: item.productId,
+            type: StockTransactionType.stockOut,
+            quantity: item.quantity,
+            reference: 'Delivery #$deliveryId',
+            date: deliveryDate,
+          );
+          await _databaseService.insertStockTransaction(stockTransaction, db: txn);
+        }
+      });
 
       await loadDeliveries();
       return deliveryId;
@@ -75,52 +88,68 @@ class DeliveryProvider with ChangeNotifier {
     required String notes,
   }) async {
     try {
-      // Get current delivery items to return stock
-      final currentItems = await _databaseService.getDeliveryItems(deliveryId);
-
-      // Return stock for all current items
-      for (final item in currentItems) {
-        final stockTransaction = StockTransaction(
-          productId: item.productId,
-          type: StockTransactionType.stockIn,
-          quantity: item.quantity,
-          reference: 'Delivery #$deliveryId Edit - Return',
-          date: DateTime.now(),
-        );
-        await _databaseService.insertStockTransaction(stockTransaction);
-      }
-
-      // Calculate new total amount
-      double totalAmount = items.fold(0.0, (sum, item) => sum + item.totalPrice);
-
-      // Update delivery record
-      final delivery = _deliveries.firstWhere((d) => d.id == deliveryId);
-      final updatedDelivery = delivery.copyWith(
-        shopId: shopId,
-        deliveryDate: deliveryDate,
-        totalAmount: totalAmount,
-        notes: notes,
-      );
-      await _databaseService.updateDelivery(updatedDelivery);
-
-      // Delete old delivery items
       final db = await _databaseService.database;
-      await db.delete('delivery_items', where: 'delivery_id = ?', whereArgs: [deliveryId]);
+      // Use delivery date for stock transactions to maintain consistent audit trail
+      final transactionDate = deliveryDate;
 
-      // Insert new delivery items and deduct stock
-      for (final item in items) {
-        final deliveryItem = item.copyWith(deliveryId: deliveryId);
-        await _databaseService.insertDeliveryItem(deliveryItem);
+      await db.transaction((txn) async {
+        // Get current delivery items to return stock
+        final currentItems = await _databaseService.getDeliveryItems(deliveryId, db: txn);
 
-        final stockTransaction = StockTransaction(
-          productId: item.productId,
-          type: StockTransactionType.stockOut,
-          quantity: item.quantity,
-          reference: 'Delivery #$deliveryId Edit - Deduct',
-          date: deliveryDate,
+        // Return stock for all current items
+        for (final item in currentItems) {
+          final stockTransaction = StockTransaction(
+            productId: item.productId,
+            type: StockTransactionType.stockIn,
+            quantity: item.quantity,
+            reference: 'Delivery #$deliveryId Edit - Return',
+            date: transactionDate,
+          );
+          await _databaseService.insertStockTransaction(stockTransaction, db: txn);
+        }
+
+        // Calculate new total amount
+        double totalAmount = items.fold(0.0, (sum, item) => sum + item.totalPrice);
+
+        // Update delivery record
+        final delivery = _deliveries.firstWhere((d) => d.id == deliveryId);
+        final updatedDelivery = delivery.copyWith(
+          shopId: shopId,
+          deliveryDate: deliveryDate,
+          totalAmount: totalAmount,
+          notes: notes,
         );
-        await _databaseService.insertStockTransaction(stockTransaction);
-      }
+        await _databaseService.updateDelivery(updatedDelivery, db: txn);
+
+        // Delete old delivery items
+        await _databaseService.deleteDeliveryItems(deliveryId, db: txn);
+
+        // Validate stock availability for new items (after old stock has been returned)
+        for (final item in items) {
+          // Calculate current stock after returns have been applied
+          final currentBalance = await _databaseService.getProductStockBalance(item.productId);
+          final projectedBalance = currentBalance - item.quantity;
+
+          if (projectedBalance < 0) {
+            throw Exception('Cannot edit delivery: Insufficient stock for product ID ${item.productId}. Current: ${currentBalance.toStringAsFixed(1)}, Required: ${item.quantity.toStringAsFixed(1)}');
+          }
+        }
+
+        // Insert new delivery items and deduct stock
+        for (final item in items) {
+          final deliveryItem = item.copyWith(deliveryId: deliveryId);
+          await _databaseService.insertDeliveryItem(deliveryItem, db: txn);
+
+          final stockTransaction = StockTransaction(
+            productId: item.productId,
+            type: StockTransactionType.stockOut,
+            quantity: item.quantity,
+            reference: 'Delivery #$deliveryId Edit - Deduct',
+            date: transactionDate,
+          );
+          await _databaseService.insertStockTransaction(stockTransaction, db: txn);
+        }
+      });
 
       await loadDeliveries();
     } catch (e) {
@@ -132,23 +161,34 @@ class DeliveryProvider with ChangeNotifier {
   Future<void> updateDeliveryStatus(int deliveryId, DeliveryStatus status) async {
     try {
       final delivery = _deliveries.firstWhere((d) => d.id == deliveryId);
-      final updatedDelivery = delivery.copyWith(status: status);
-      await _databaseService.updateDelivery(updatedDelivery);
 
-      // If delivery is being cancelled, return stock to inventory
-      if (status == DeliveryStatus.cancelled) {
-        final items = await _databaseService.getDeliveryItems(deliveryId);
-        for (final item in items) {
-          final stockTransaction = StockTransaction(
-            productId: item.productId,
-            type: StockTransactionType.stockIn,
-            quantity: item.quantity,
-            reference: 'Delivery #$deliveryId Cancelled',
-            date: DateTime.now(),
-          );
-          await _databaseService.insertStockTransaction(stockTransaction);
-        }
+      // Validate status transition - only PENDING can transition to COMPLETED or CANCELLED
+      if (delivery.status != DeliveryStatus.pending) {
+        throw Exception('Only pending deliveries can be marked as completed or cancelled. Current status: ${delivery.status.name}');
       }
+
+      final updatedDelivery = delivery.copyWith(status: status);
+      final db = await _databaseService.database;
+
+      await db.transaction((txn) async {
+        await _databaseService.updateDelivery(updatedDelivery, db: txn);
+
+        // If delivery is being cancelled, return stock to inventory
+        // Use delivery date for stock transactions to maintain consistent audit trail
+        if (status == DeliveryStatus.cancelled) {
+          final items = await _databaseService.getDeliveryItems(deliveryId, db: txn);
+          for (final item in items) {
+            final stockTransaction = StockTransaction(
+              productId: item.productId,
+              type: StockTransactionType.stockIn,
+              quantity: item.quantity,
+              reference: 'Delivery #$deliveryId Cancelled',
+              date: delivery.deliveryDate,
+            );
+            await _databaseService.insertStockTransaction(stockTransaction, db: txn);
+          }
+        }
+      });
 
       final index = _deliveries.indexWhere((d) => d.id == deliveryId);
       if (index != -1) {

@@ -113,8 +113,8 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
         child: Column(
           children: [
             _buildTypeTile(StockTransactionType.stockIn, AppStrings.stockIn(isBengali), 'Add new items to inventory.', Icons.add_circle, Colors.green),
-            _buildTypeTile(StockTransactionType.stockOut, AppStrings.stockOut(isBengali), 'Remove items from inventory (e.g., sold, used). ', Icons.remove_circle, Colors.red),
-            _buildTypeTile(StockTransactionType.adjustment, AppStrings.adjustment(isBengali), 'Correct the inventory count (e.g., damaged goods). ', Icons.edit, Colors.blue),
+            _buildTypeTile(StockTransactionType.stockOut, AppStrings.stockOut(isBengali), 'Remove items from inventory (e.g., sold, used).', Icons.remove_circle, Colors.red),
+            _buildTypeTile(StockTransactionType.adjustment, AppStrings.adjustment(isBengali), 'Correct inventory during audit. Use + to add, - to remove (e.g., +5 found, -3 damaged).', Icons.edit, Colors.blue),
           ],
         ),
       ),
@@ -144,14 +144,26 @@ class _StockTransactionScreenState extends State<StockTransactionScreen> {
               controller: _quantityController,
               decoration: InputDecoration(
                 labelText: '${AppStrings.quantity(isBengali)} (${widget.product.unit})',
+                hintText: _selectedType == StockTransactionType.adjustment ? 'e.g., 10 or -5' : 'e.g., 10',
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.format_list_numbered),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) return AppStrings.pleaseEnterQuantity(isBengali);
                 final quantity = double.tryParse(value);
-                if (quantity == null || quantity <= 0) return AppStrings.pleaseEnterValidQuantity(isBengali);
+                if (quantity == null) return AppStrings.pleaseEnterValidQuantity(isBengali);
+
+                // For adjustments, allow negative values; for stockIn/stockOut, require positive
+                if (_selectedType != StockTransactionType.adjustment && quantity <= 0) {
+                  return AppStrings.pleaseEnterValidQuantity(isBengali);
+                }
+
+                // For adjustments, don't allow zero (meaningless adjustment)
+                if (_selectedType == StockTransactionType.adjustment && quantity == 0) {
+                  return 'Adjustment cannot be zero';
+                }
+
                 return null;
               },
             ),

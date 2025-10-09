@@ -276,7 +276,7 @@ class ShopCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppStrings.delete(isBengali)),
-        content: Text('Are you sure you want to delete "${shop.name}"? This will also delete all associated deliveries.'),
+        content: Text('Are you sure you want to delete "${shop.name}"? Note: Shops with deliveries or returns cannot be deleted.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text(AppStrings.cancel(isBengali))),
           TextButton(

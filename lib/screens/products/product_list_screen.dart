@@ -275,7 +275,7 @@ class ProductCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppStrings.delete(isBengali)),
-        content: Text('Are you sure you want to delete "${product.name}"? This cannot be undone.'),
+        content: Text('Are you sure you want to delete "${product.name}"? Note: Products with stock transactions, deliveries, or returns cannot be deleted.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text(AppStrings.cancel(isBengali))),
           TextButton(

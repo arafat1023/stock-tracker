@@ -271,19 +271,17 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
 
     if (result == true && mounted) {
-      // Reload delivery items after edit
-      setState(() {
-        _isLoading = true;
-      });
-      await _loadDeliveryItems();
-      // Also pop back to refresh the list
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
+      // The list screen will be refreshed by the provider, so just pop this screen
+      Navigator.pop(context, true);
     }
   }
 
   void _updateDeliveryStatus(DeliveryStatus status, bool isBengali) async {
+    // Capture context-dependent references before async gaps
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final deliveryProvider = context.read<DeliveryProvider>();
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -297,10 +295,6 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     );
 
     if (confirmed == true) {
-      final navigator = Navigator.of(context);
-      final messenger = ScaffoldMessenger.of(context);
-      final deliveryProvider = context.read<DeliveryProvider>();
-
       try {
         await deliveryProvider.updateDeliveryStatus(widget.delivery.id!, status);
         if (!mounted) return;
@@ -320,6 +314,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   void _generatePDF(bool isBengali) async {
+    // Capture context-dependent references before async gaps
+    final shopProvider = context.read<ShopProvider>();
+    final productProvider = context.read<ProductProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -347,11 +346,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (action == null || action == 'cancel') return;
 
     try {
-      final shop = context.read<ShopProvider>().getShopById(widget.delivery.shopId);
+      final shop = shopProvider.getShopById(widget.delivery.shopId);
       if (shop == null) throw Exception('Shop not found');
 
       final products = _deliveryItems.map((item) {
-        return context.read<ProductProvider>().getProductById(item.productId) ?? Product.fromMap({
+        return productProvider.getProductById(item.productId) ?? Product.fromMap({
           'id': 0,
           'name': 'Unknown',
           'unit': '',
@@ -374,20 +373,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       if (!mounted) return;
 
       if (action == 'download' && filePath != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('${AppStrings.pdfDownloadedTo(isBengali)}: $filePath'),
             duration: const Duration(seconds: 4),
           ),
         );
       } else if (action == 'share') {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(AppStrings.pdfGeneratedAndReady(isBengali))),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
           SnackBar(content: Text('${AppStrings.errorGeneratingPDF(isBengali)}: $e'), backgroundColor: Colors.red),
         );
     }

@@ -15,7 +15,10 @@ class StockTransaction {
     required this.quantity,
     required this.reference,
     required this.date,
-  });
+  }) : assert(
+          type == StockTransactionType.adjustment || quantity > 0,
+          'Quantity must be positive (except for adjustments which can be negative)',
+        );
 
   Map<String, dynamic> toMap() {
     return {
@@ -29,14 +32,27 @@ class StockTransaction {
   }
 
   factory StockTransaction.fromMap(Map<String, dynamic> map) {
+    // Validate required fields
+    final quantity = map['quantity']?.toDouble();
+    final type = StockTransactionType.values.firstWhere(
+      (e) => e.name == map['type'],
+      orElse: () => StockTransactionType.stockIn,
+    );
+
+    if (quantity == null) {
+      throw ArgumentError('StockTransaction quantity cannot be null');
+    }
+
+    // Validate quantity based on type (adjustments can be negative, others must be positive)
+    if (type != StockTransactionType.adjustment && quantity <= 0) {
+      throw ArgumentError('StockTransaction quantity must be positive for $type, got: $quantity');
+    }
+
     return StockTransaction(
       id: map['id']?.toInt(),
       productId: map['product_id']?.toInt() ?? 0,
-      type: StockTransactionType.values.firstWhere(
-        (e) => e.name == map['type'],
-        orElse: () => StockTransactionType.stockIn,
-      ),
-      quantity: map['quantity']?.toDouble() ?? 0.0,
+      type: type,
+      quantity: quantity,
       reference: map['reference'] ?? '',
       date: DateTime.parse(map['date']),
     );
