@@ -73,6 +73,21 @@ class DeliveryProvider with ChangeNotifier {
       final updatedDelivery = delivery.copyWith(status: status);
       await _databaseService.updateDelivery(updatedDelivery);
 
+      // If delivery is being cancelled, return stock to inventory
+      if (status == DeliveryStatus.cancelled) {
+        final items = await _databaseService.getDeliveryItems(deliveryId);
+        for (final item in items) {
+          final stockTransaction = StockTransaction(
+            productId: item.productId,
+            type: StockTransactionType.stockIn,
+            quantity: item.quantity,
+            reference: 'Delivery #$deliveryId Cancelled',
+            date: DateTime.now(),
+          );
+          await _databaseService.insertStockTransaction(stockTransaction);
+        }
+      }
+
       final index = _deliveries.indexWhere((d) => d.id == deliveryId);
       if (index != -1) {
         _deliveries[index] = updatedDelivery;
