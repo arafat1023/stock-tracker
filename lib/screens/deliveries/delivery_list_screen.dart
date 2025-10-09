@@ -325,7 +325,7 @@ class DeliveryCard extends StatelessWidget {
                       if (delivery.status == DeliveryStatus.pending)
                         TextButton.icon(
                           icon: const Icon(Icons.check_circle, color: Colors.green),
-                          label: Text(AppStrings.completed(isBengali), style: const TextStyle(color: Colors.green)),
+                          label: Text(AppStrings.markAsCompleted(isBengali), style: const TextStyle(color: Colors.green)),
                           onPressed: () => _updateDeliveryStatus(context, delivery, DeliveryStatus.completed),
                         ),
                       IconButton(

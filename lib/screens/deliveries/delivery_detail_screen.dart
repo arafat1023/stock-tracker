@@ -10,6 +10,7 @@ import '../../providers/product_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../utils/app_strings.dart';
 import '../../services/pdf_service.dart';
+import 'delivery_edit_screen.dart';
 
 class DeliveryDetailScreen extends StatefulWidget {
   final Delivery delivery;
@@ -61,6 +62,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             title: Text('${AppStrings.delivery(isBengali)} #${widget.delivery.id}'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             actions: [
+              if (widget.delivery.status == DeliveryStatus.pending)
+                IconButton(
+                  onPressed: () => _navigateToEdit(isBengali),
+                  icon: const Icon(Icons.edit),
+                  tooltip: AppStrings.edit(isBengali),
+                ),
               IconButton(
                 onPressed: () => _generatePDF(isBengali),
                 icon: const Icon(Icons.picture_as_pdf),
@@ -253,6 +260,27 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         ),
       ),
     );
+  }
+
+  void _navigateToEdit(bool isBengali) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DeliveryEditScreen(delivery: widget.delivery),
+      ),
+    );
+
+    if (result == true && mounted) {
+      // Reload delivery items after edit
+      setState(() {
+        _isLoading = true;
+      });
+      await _loadDeliveryItems();
+      // Also pop back to refresh the list
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    }
   }
 
   void _updateDeliveryStatus(DeliveryStatus status, bool isBengali) async {
