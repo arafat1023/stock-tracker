@@ -49,7 +49,7 @@ class DeliveryProvider with ChangeNotifier {
       await db.transaction((txn) async {
         // Validate stock availability before creating delivery
         for (final item in items) {
-          final error = await _databaseService.validateStockOperation(item.productId, -item.quantity);
+          final error = await _databaseService.validateStockOperation(item.productId, -item.quantity, db: txn);
           if (error != null) {
             throw Exception('Cannot create delivery: $error');
           }
@@ -127,7 +127,7 @@ class DeliveryProvider with ChangeNotifier {
         // Validate stock availability for new items (after old stock has been returned)
         for (final item in items) {
           // Calculate current stock after returns have been applied
-          final currentBalance = await _databaseService.getProductStockBalance(item.productId);
+          final currentBalance = await _databaseService.getProductStockBalance(item.productId, db: txn);
           final projectedBalance = currentBalance - item.quantity;
 
           if (projectedBalance < 0) {

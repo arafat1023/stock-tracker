@@ -29,17 +29,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _loadDashboardMetrics() async {
     setState(() => _isLoading = true);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final metrics = await _reportService.getDashboardMetrics();
-      setState(() {
-        _dashboardMetrics = metrics;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
+        setState(() {
+          _dashboardMetrics = metrics;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading dashboard: $e')),
         );
       }
@@ -277,7 +278,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withAlpha(25),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 28),

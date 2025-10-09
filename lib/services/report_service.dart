@@ -115,34 +115,47 @@ class ReportService {
   // Product Reports
   Future<List<ProductPerformanceItem>> getProductPerformanceReport({DateTime? startDate, DateTime? endDate}) async {
     final products = await _databaseService.getProducts();
-    final performanceItems = <ProductPerformanceItem>[];
+    final deliveries = await _databaseService.getDeliveries();
 
+    // Filter deliveries by date and status once
+    final filteredDeliveries = deliveries.where((delivery) {
+      if (startDate != null && delivery.deliveryDate.isBefore(startDate)) return false;
+      if (endDate != null && delivery.deliveryDate.isAfter(endDate)) return false;
+      if (delivery.status != DeliveryStatus.completed) return false;
+      return true;
+    }).toList();
+
+    // Load all delivery items for filtered deliveries at once
+    final Map<int, Map<String, dynamic>> productStats = {};
     for (final product in products) {
-      final deliveries = await _databaseService.getDeliveries();
-      double totalQuantityDelivered = 0.0;
-      double totalRevenue = 0.0;
-      int deliveryCount = 0;
+      productStats[product.id!] = {
+        'quantity': 0.0,
+        'revenue': 0.0,
+        'count': 0,
+      };
+    }
 
-      for (final delivery in deliveries) {
-        if (startDate != null && delivery.deliveryDate.isBefore(startDate)) continue;
-        if (endDate != null && delivery.deliveryDate.isAfter(endDate)) continue;
-        if (delivery.status != DeliveryStatus.completed) continue;
-
-        final items = await _databaseService.getDeliveryItems(delivery.id!);
-        for (final item in items) {
-          if (item.productId == product.id) {
-            totalQuantityDelivered += item.quantity;
-            totalRevenue += item.totalPrice;
-            deliveryCount++;
-          }
+    // Process all delivery items in a single pass
+    for (final delivery in filteredDeliveries) {
+      final items = await _databaseService.getDeliveryItems(delivery.id!);
+      for (final item in items) {
+        if (productStats.containsKey(item.productId)) {
+          productStats[item.productId]!['quantity'] += item.quantity;
+          productStats[item.productId]!['revenue'] += item.totalPrice;
+          productStats[item.productId]!['count'] += 1;
         }
       }
+    }
 
+    // Build performance items from aggregated data
+    final performanceItems = <ProductPerformanceItem>[];
+    for (final product in products) {
+      final stats = productStats[product.id!]!;
       performanceItems.add(ProductPerformanceItem(
         product: product,
-        totalQuantityDelivered: totalQuantityDelivered,
-        totalRevenue: totalRevenue,
-        deliveryCount: deliveryCount,
+        totalQuantityDelivered: stats['quantity'] as double,
+        totalRevenue: stats['revenue'] as double,
+        deliveryCount: stats['count'] as int,
       ));
     }
 

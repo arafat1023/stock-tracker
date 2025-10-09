@@ -265,9 +265,9 @@ class DatabaseService {
     return List.generate(maps.length, (i) => StockTransaction.fromMap(maps[i]));
   }
 
-  Future<double> getProductStockBalance(int productId) async {
-    final db = await database;
-    final result = await db.rawQuery('''
+  Future<double> getProductStockBalance(int productId, {DatabaseExecutor? db}) async {
+    final executor = db ?? await database;
+    final result = await executor.rawQuery('''
       SELECT
         SUM(CASE WHEN type = 'stockIn' THEN quantity ELSE 0 END) -
         SUM(CASE WHEN type = 'stockOut' THEN quantity ELSE 0 END) +
@@ -287,8 +287,8 @@ class DatabaseService {
 
   /// Validates that a stock operation won't result in negative stock
   /// Returns error message if invalid, null if valid
-  Future<String?> validateStockOperation(int productId, double quantityChange) async {
-    final currentBalance = await getProductStockBalance(productId);
+  Future<String?> validateStockOperation(int productId, double quantityChange, {DatabaseExecutor? db}) async {
+    final currentBalance = await getProductStockBalance(productId, db: db);
     final newBalance = currentBalance + quantityChange; // quantityChange is negative for stockOut
 
     if (newBalance < 0) {
@@ -441,11 +441,9 @@ class DatabaseService {
       await txn.delete('products');
       await txn.delete('shops');
 
-      // Reset auto-increment counters by updating sqlite_sequence table
+      // Reset auto-increment counters by deleting sqlite_sequence entries
+      // This will reset all auto-increment counters to 0
       await txn.delete('sqlite_sequence');
-
-      // Alternative approach: Update each table's sequence to 0
-      await txn.rawUpdate("UPDATE sqlite_sequence SET seq = 0 WHERE name IN ('products', 'shops', 'deliveries', 'delivery_items', 'stock_transactions', 'returns')");
     });
   }
 

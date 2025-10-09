@@ -108,8 +108,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
           const SizedBox(height: 8),
           Text(
             isSearching
-                ? AppStrings.noProductsFound(isBengali)
-                : AppStrings.createFirstProduct(isBengali),
+                ? 'Try adjusting your search terms'
+                : 'Add your first product to get started',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),

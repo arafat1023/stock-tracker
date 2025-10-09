@@ -27,11 +27,26 @@ class Return {
   }
 
   factory Return.fromMap(Map<String, dynamic> map) {
+    // Validate required fields
+    final shopId = map['shop_id']?.toInt();
+    final productId = map['product_id']?.toInt();
+    final quantity = map['quantity']?.toDouble();
+
+    if (shopId == null || shopId <= 0) {
+      throw ArgumentError('Return shopId must be positive, got: $shopId');
+    }
+    if (productId == null || productId <= 0) {
+      throw ArgumentError('Return productId must be positive, got: $productId');
+    }
+    if (quantity == null || quantity <= 0) {
+      throw ArgumentError('Return quantity must be positive, got: $quantity');
+    }
+
     return Return(
       id: map['id']?.toInt(),
-      shopId: map['shop_id']?.toInt() ?? 0,
-      productId: map['product_id']?.toInt() ?? 0,
-      quantity: map['quantity']?.toDouble() ?? 0.0,
+      shopId: shopId,
+      productId: productId,
+      quantity: quantity,
       returnDate: DateTime.parse(map['return_date']),
       reason: map['reason'] ?? '',
     );

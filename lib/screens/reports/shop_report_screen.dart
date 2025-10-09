@@ -28,21 +28,22 @@ class _ShopReportScreenState extends State<ShopReportScreen> {
 
   Future<void> _loadShopReport() async {
     setState(() => _isLoading = true);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final items = await _reportService.getShopPerformanceReport(
         startDate: _startDate,
         endDate: _endDate,
       );
-      setState(() {
-        _shopItems = items;
-        _isLoading = false;
-        _applySorting();
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
+        setState(() {
+          _shopItems = items;
+          _isLoading = false;
+          _applySorting();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading shop report: $e')),
         );
       }

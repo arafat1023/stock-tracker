@@ -25,18 +25,19 @@ class _StockReportScreenState extends State<StockReportScreen> {
 
   Future<void> _loadStockReport() async {
     setState(() => _isLoading = true);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final items = await _reportService.getStockBalanceReport();
-      setState(() {
-        _originalStockItems = items;
-        _applySortAndFilter();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
+        setState(() {
+          _originalStockItems = items;
+          _applySortAndFilter();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading stock report: $e')),
         );
       }
@@ -243,7 +244,7 @@ class _StockReportScreenState extends State<StockReportScreen> {
                 _applySortAndFilter();
               });
             },
-            selectedColor: Colors.red.withAlpha(51),
+            selectedColor: Colors.red.withValues(alpha: 0.2),
           ),
         ],
       ),

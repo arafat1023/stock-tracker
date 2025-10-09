@@ -75,17 +75,13 @@ class StockProvider with ChangeNotifier {
   }
 
   Future<Map<int, double>> getAllProductStockBalances(List<int> productIds) async {
-    Map<int, double> balances = {};
-
-    for (int productId in productIds) {
-      try {
-        balances[productId] = await _databaseService.getProductStockBalance(productId);
-      } catch (e) {
-        debugPrint('Error getting stock balance for product $productId: $e');
-        balances[productId] = 0.0;
-      }
+    try {
+      // Use optimized batch method instead of looping
+      return await _databaseService.getAvailableStockForProducts(productIds);
+    } catch (e) {
+      debugPrint('Error getting stock balances: $e');
+      // Return empty map with 0.0 for all products on error
+      return {for (var id in productIds) id: 0.0};
     }
-
-    return balances;
   }
 }
